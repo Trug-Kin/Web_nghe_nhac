@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% set body_class = 'login-page' %}
+{% block head_extra %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+    <div class="auth-card">
+        <h2 class="auth-title">MELUNE</h2>
+        <p class="auth-subtitle">Đăng nhập </p>
+
+        <form id="loginForm" class="auth-form" method="post" onsubmit="event.preventDefault();">
+            <div class="input-group">
+                <input id="loginUsername" name="username" type="text" placeholder="Email Address" required>
+            </div>
+
+            <div class="input-group password-group">
+                <input id="loginPassword" type="password" name="password" placeholder="Password" required>
+                <button type="button" class="toggle-password" id="togglePassword" aria-label="Toggle password visibility">
+                    <i class="fa fa-eye"></i>
+                </button>
+            </div>
+
+            <div class="form-options">
+                <label class="remember-me">
+                    
+                </label>
+            </div>
+
+            <button type="submit" class="btn-submit">Sign In</button>
+
+            <p id="result" class="message"></p>
+
+            <div class="auth-switch">
+                <span>Don't have an account?</span>
+                <a href="/auth/register-page">Sign up</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+    {{ super() }}
+    <script>
+        // Toggle password visibility
+        (function(){
+            const btn = document.getElementById('togglePassword');
+            const pw = document.getElementById('loginPassword');
+            if(btn && pw) {
+                btn.addEventListener('click', ()=>{
+                    const isPassword = pw.type === 'password';
+                    pw.type = isPassword ? 'text' : 'password';
+                    btn.innerHTML = isPassword ? '<i class="fa fa-eye-slash"></i>' : '<i class="fa fa-eye"></i>';
+                });
+            }
+        })();
+
+        // Handle login form submission
+        const loginForm = document.getElementById('loginForm');
+        const resultDiv = document.getElementById('result');
+        
+        if (loginForm) {
+            loginForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const username = document.getElementById('loginUsername').value;
+                const password = document.getElementById('loginPassword').value;
+                const submitBtn = loginForm.querySelector('.btn-submit');
+                
+                if (submitBtn) submitBtn.disabled = true;
+                resultDiv.textContent = 'Đang đăng nhập...';
+                resultDiv.className = 'message';
+                
+                try {
+                    const response = await fetch('/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ username, password })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        resultDiv.textContent = 'Đăng nhập thành công! Đang chuyển trang...';
+                        resultDiv.className = 'message success';
+                        
+                        // Get redirect URL from query params or default to home
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const redirectTo = urlParams.get('next') || '/';
+                        
+                        setTimeout(() => {
+                            window.location.href = redirectTo;
+                        }, 500);
+                    } else {
+                        resultDiv.textContent = data.msg || 'Đăng nhập thất bại!';
+                        resultDiv.className = 'message error';
+                        if (submitBtn) submitBtn.disabled = false;
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    resultDiv.textContent = 'Lỗi kết nối! Vui lòng thử lại.';
+                    resultDiv.className = 'message error';
+                    if (submitBtn) submitBtn.disabled = false;
+                }
+            });
+        }
+    </script>
+{% endblock %}

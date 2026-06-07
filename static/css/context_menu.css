@@ -1,0 +1,54 @@
+/* Context menu & toast styling */
+#song-context-menu {
+  backdrop-filter: blur(4px);
+}
+#song-context-menu::-webkit-scrollbar { width: 10px; }
+#song-context-menu::-webkit-scrollbar-track { background: #1e1e1e; }
+#song-context-menu::-webkit-scrollbar-thumb { background:#444; border-radius:4px; }
+#song-context-menu::-webkit-scrollbar-thumb:hover { background:#555; }
+#song-context-menu button, #song-context-menu .playlist-item {
+  font-family: inherit;
+}
+#song-context-menu .playlist-item {
+  padding:8px 14px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:#ddd;
+  transition: background .12s, color .12s;
+  position:relative;
+}
+#song-context-menu .playlist-item:hover { background:#2e2e2e; color:#fff; }
+#song-context-menu .playlist-item.added::after {
+  content:"✓"; color:#0f0; font-size:12px; position:absolute; right:10px; top:50%; transform:translateY(-50%);
+}
+#song-context-menu .playlist-item.disabled { opacity:0.4; cursor:default; }
+#song-context-menu .playlist-item.disabled:hover { background:transparent; }
+#song-context-menu #context-create-playlist-btn:hover { background:#2a2a2a; }
+#song-context-menu input:focus, #song-context-menu textarea:focus { outline:1px solid #0a84ff; }
+#song-context-menu #context-save-playlist:disabled { background:#0a84ff55; cursor:wait; }
+
+/* Toasts */
+#toast-container .toast {
+  background:#222;
+  padding:10px 14px;
+  color:#eee;
+  font-size:13px;
+  border-radius:6px;
+  box-shadow:0 4px 14px rgba(0,0,0,0.4);
+  animation: toast-in .25s ease;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  pointer-events:auto;
+}
+#toast-container .toast.success { border-left:4px solid #28a745; }
+#toast-container .toast.error { border-left:4px solid #dc3545; }
+#toast-container .toast.info { border-left:4px solid #0a84ff; }
+#toast-container .toast button.close-btn {
+  background:none; border:none; color:#bbb; cursor:pointer; font-size:16px; line-height:1;
+}
+#toast-container .toast button.close-btn:hover { color:#fff; }
+@keyframes toast-in { from { opacity:0; transform:translateY(8px);} to {opacity:1; transform:translateY(0);} }
+@keyframes toast-out { to { opacity:0; transform:translateY(6px);} }

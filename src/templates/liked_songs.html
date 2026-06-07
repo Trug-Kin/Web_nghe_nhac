@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Bài hát yêu thích{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="page-header mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-heart" style="color: #ff4081;"></i>
+            Bài hát yêu thích
+        </h1>
+        <p class="text-muted">{{ songs|length }} bài hát</p>
+    </div>
+
+    {% if songs %}
+    <div class="songs-table-wrapper">
+        <table class="song-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Tiêu đề</th>
+                    <th>Nghệ sĩ</th>
+                    <th>Album</th>
+                    <th>Thể loại</th>
+                    <th>Thích</th>
+                </tr>
+            </thead>
+            <tbody id="song-list-body">
+                {% for song in songs %}
+                <tr class="song-row" data-song-id="{{ song.id }}" data-mp3-path="{% if song.mp3_path.startswith('/static/') %}{{ song.mp3_path }}{% else %}/static/{{ song.mp3_path }}{% endif %}" data-title="{{ song.title }}" data-artist-name="{{ song.artist_name }}" data-album-image="{% if song.album and song.album.cover_image_path %}{{ url_for('static', filename=song.album.cover_image_path) }}{% else %}/static/images/default.jpg{% endif %}">
+                    <td>{{ loop.index }}</td>
+                    <td>
+                        <div class="song-info">
+                            <i class="fas fa-play-circle play-icon"></i>
+                            <a href="/song/{{ song.id }}" onclick="event.stopPropagation()" class="song-title-link" style="color:#fff;text-decoration:none;margin-left:8px;">{{ song.title }}</a>
+                        </div>
+                    </td>
+                    <td>
+                        {% if song.artist_id %}
+                        <a href="/artist/{{ song.artist_id }}" onclick="event.stopPropagation()" class="artist-link">
+                            {{ song.artist_name }}
+                        </a>
+                        {% else %}
+                        {{ song.artist_name }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if song.album_id %}
+                        <a href="/album/{{ song.album_id }}" onclick="event.stopPropagation()" class="album-link">
+                            {{ song.album_title }}
+                        </a>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ song.genre_name or '-' }}</td>
+                    <td class="like-cell">
+                        <button class="like-button liked" onclick="toggleLike({{ song.id }}, this); event.stopPropagation();">
+                            <i class="fas fa-heart"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-heart-broken" style="font-size: 4rem; color: #666; margin-bottom: 1rem;"></i>
+        <h3>Chưa có bài hát yêu thích</h3>
+        <p class="text-muted">Hãy thích những bài hát bạn yêu thích để thêm vào đây!</p>
+        <a href="/" class="btn btn-primary mt-3">
+            <i class="fas fa-music"></i> Khám phá nhạc
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.page-header {
+    border-bottom: 2px solid #333;
+    padding-bottom: 1rem;
+}
+
+.page-title {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.songs-table-wrapper {
+    background: #1a1a1a;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.song-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.song-table thead {
+    background: #282828;
+}
+
+.song-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #b3b3b3;
+    border-bottom: 1px solid #333;
+}
+
+.song-table tbody tr {
+    border-bottom: 1px solid #2a2a2a;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.song-table tbody tr:hover {
+    background: #282828;
+}
+
+.song-table td {
+    padding: 1rem;
+    color: #fff;
+}
+
+.song-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.play-icon {
+    color: #1db954;
+    font-size: 1.25rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.song-row:hover .play-icon {
+    opacity: 1;
+}
+
+.song-title {
+    font-weight: 500;
+}
+
+.artist-link, .album-link {
+    color: #b3b3b3;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.artist-link:hover, .album-link:hover {
+    color: #fff;
+    text-decoration: underline;
+}
+
+.like-cell {
+    text-align: center;
+    width: 80px;
+}
+
+.like-button.liked i {
+    color: #ff4081;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #b3b3b3;
+}
+
+.empty-state h3 {
+    color: #fff;
+    margin-bottom: 0.5rem;
+}
+
+.btn-primary {
+    background: #1db954;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
+    transition: background 0.2s;
+}
+
+.btn-primary:hover {
+    background: #1ed760;
+}
+</style>
+
+<script>
+// Attach song row click events for playing songs
+document.addEventListener('DOMContentLoaded', function() {
+    // Ensure app.js attachSongRowEvents is called to enable click-to-play
+    if (typeof attachSongRowEvents === 'function') {
+        attachSongRowEvents();
+    }
+});
+</script>
+
+<script src="{{ url_for('static', filename='js/interactions.js') }}"></script>
+{% endblock %}

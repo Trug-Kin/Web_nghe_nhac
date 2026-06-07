@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Album{% endblock %}
+{% block content %}
+<input type="hidden" id="entity-id" value="{{ album_id }}">
+<input type="hidden" id="entity-type" value="album">
+
+<div class="entity-page">
+    <header class="entity-header" id="entity-header">
+        <div class="entity-info">
+            <img id="entity-image" src="" alt="Album Cover" class="entity-image" style="border-radius: 8px;">
+            <h1 id="entity-name">Đang tải...</h1>
+        </div>
+    </header>
+
+    <div class="song-list-container">
+        <h2>Bài hát trong album</h2>
+        <table class="song-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Tiêu đề</th>
+                    <th>Nghệ sĩ</th>
+                    <th>Chọn</th>
+                </tr>
+            </thead>
+            <tbody id="song-list-body"></tbody>
+        </table>
+        <div class="bulk-playlist-tools" style="margin-top:10px;">
+            <button id="create-playlist-from-selection-album" class="btn" style="display:none;">Tạo playlist từ bài đã chọn</button>
+            <button id="select-all-album" class="btn" style="display:none;">Chọn tất cả</button>
+            <button id="deselect-all-album" class="btn" style="display:none;">Bỏ chọn</button>
+            <span id="selected-count-album" style="margin-left:8px;color:#aaa;"></span>
+            <div id="existing-playlist-panel-album" style="display:none; margin-top:8px;">
+                <select id="existing-playlist-select-album" style="min-width:200px;"></select>
+                <button id="add-to-existing-playlist-album" class="btn">Thêm vào playlist đã có</button>
+                <span id="existing-add-status-album" style="margin-left:8px;font-size:12px;color:#888;"></span>
+            </div>
+            <div id="quick-add-info-album" style="display:none;margin-top:8px;font-size:12px;color:#ccc;">Dùng biểu tượng ➕ ở mỗi bài để thêm nhanh.</div>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    const btn = document.getElementById('create-playlist-from-selection-album');
+    const selectAllBtn = document.getElementById('select-all-album');
+    const deselectAllBtn = document.getElementById('deselect-all-album');
+    const countSpan = document.getElementById('selected-count-album');
+    function updateState(){
+        const checked = Array.from(document.querySelectorAll('.song-select-checkbox:checked')).map(cb=>cb.getAttribute('data-song-id'));
+        const role = localStorage.getItem('role');
+        const allowed = ['user','uploader','admin'].includes(role);
+        if(allowed){
+            selectAllBtn.style.display='inline-block';
+            deselectAllBtn.style.display='inline-block';
+        } else {
+            selectAllBtn.style.display='none';
+            deselectAllBtn.style.display='none';
+        }
+        if(checked.length>0 && allowed){
+            btn.style.display='inline-block';
+            countSpan.textContent = checked.length + ' bài đã chọn';
+            if(existingPanel) existingPanel.style.display='block';
+        } else {
+            btn.style.display='none';
+            countSpan.textContent='';
+            if(existingPanel) existingPanel.style.display='none';
+        }
+    }
+    if(selectAllBtn){
+        selectAllBtn.addEventListener('click', function(){
+            document.querySelectorAll('.song-select-checkbox').forEach(cb=>{ cb.checked=true; });
+            updateState();
+        });
+    }
+    if(deselectAllBtn){
+        deselectAllBtn.addEventListener('click', function(){
+            document.querySelectorAll('.song-select-checkbox').forEach(cb=>{ cb.checked=false; });
+            updateState();
+        });
+    }
+    document.addEventListener('change', function(e){ if(e.target.classList && e.target.classList.contains('song-select-checkbox')) updateState(); });
+    if(btn){
+        btn.addEventListener('click', function(){
+            const songIds = Array.from(document.querySelectorAll('.song-select-checkbox:checked')).map(cb=>parseInt(cb.getAttribute('data-song-id'))).filter(Number.isInteger);
+            if(songIds.length===0) return;
+            const modal = document.getElementById('createPlaylistModal');
+            if(modal) modal.style.display='block';
+            const form = document.getElementById('playlistCreationForm');
+            if(form && !form.dataset.bulkBindAlbum){
+                form.dataset.bulkBindAlbum='1';
+                form.addEventListener('submit', function(ev){
+                    ev.preventDefault();
+                    const name = document.getElementById('newPlaylistName').value.trim();
+                    const description = document.getElementById('newPlaylistDescription').value.trim();
+                    const headers={'Content-Type':'application/json'};
+                    const token=localStorage.getItem('access_token');
+                    if(token) headers['Authorization']='Bearer '+token;
+                    fetch('/api/playlists', {method:'POST', headers, credentials:'include', body:JSON.stringify({name, description, song_ids:songIds})})
+                        .then(r=>r.json().then(j=>({ok:r.ok,data:j})))
+                        .then(obj=>{
+                            const msgEl = document.getElementById('playlistCreationMessage');
+                            if(obj.ok){
+                                msgEl.textContent='Tạo playlist thành công ('+(obj.data.added_song_ids||[]).length+' bài)!';
+                                msgEl.style.color='green';
+                                setTimeout(()=>{ if(modal) modal.style.display='none'; location.href='/playlists'; },1200);
+                            } else {
+                                msgEl.textContent=obj.data.msg||'Lỗi tạo playlist';
+                                msgEl.style.color='red';
+                            }
+                        }).catch(()=>{
+                            const msgEl = document.getElementById('playlistCreationMessage');
+                            if(msgEl){ msgEl.textContent='Lỗi kết nối server'; msgEl.style.color='red'; }
+                        });
+                });
+            }
+        });
+    }
+
+    const existingPanel = document.getElementById('existing-playlist-panel-album');
+    const existingSelect = document.getElementById('existing-playlist-select-album');
+    const addToExistingBtn = document.getElementById('add-to-existing-playlist-album');
+    const existingStatus = document.getElementById('existing-add-status-album');
+    const quickAddInfo = document.getElementById('quick-add-info-album');
+
+    async function loadUserPlaylists(){
+        const token = localStorage.getItem('access_token');
+        const headers = {'Content-Type':'application/json'};
+        if(token) headers['Authorization'] = 'Bearer ' + token;
+        try {
+            const r = await fetch('/api/playlists/', {headers, credentials:'include'});
+            const data = await r.json();
+            if(r.ok && Array.isArray(data)){
+                existingSelect.innerHTML = '';
+                data.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.textContent = p.name + ' (' + (p.song_count||0) + ' bài)';
+                    existingSelect.appendChild(opt);
+                });
+                if(data.length>0 && quickAddInfo) quickAddInfo.style.display='block';
+            } else {
+                existingSelect.innerHTML = '<option value="">Không tải được playlist</option>';
+            }
+        } catch(e){
+            existingSelect.innerHTML = '<option value="">Lỗi kết nối</option>';
+        }
+    }
+    loadUserPlaylists();
+
+    if(addToExistingBtn){
+        addToExistingBtn.addEventListener('click', async ()=>{
+            const playlistId = existingSelect.value;
+            if(!playlistId){ existingStatus.textContent='Chọn playlist'; existingStatus.style.color='red'; return; }
+            const songIds = Array.from(document.querySelectorAll('.song-select-checkbox:checked')).map(cb=>parseInt(cb.getAttribute('data-song-id'))).filter(Number.isInteger);
+            if(songIds.length === 0){ existingStatus.textContent='Chưa chọn bài'; existingStatus.style.color='red'; return; }
+            existingStatus.textContent='Đang thêm...'; existingStatus.style.color='gray';
+            const token = localStorage.getItem('access_token');
+            const headers = {'Content-Type':'application/json'};
+            if(token) headers['Authorization'] = 'Bearer ' + token;
+            try {
+                const r = await fetch('/api/playlists/' + playlistId + '/add_songs', {
+                    method:'POST', headers, credentials:'include', body: JSON.stringify({song_ids: songIds})
+                });
+                const data = await r.json();
+                if(r.ok){
+                    existingStatus.textContent = 'Đã thêm: ' + (data.added_ids?.length||0) + ', Bỏ qua: ' + (data.skipped?.length||0);
+                    existingStatus.style.color='green';
+                } else {
+                    existingStatus.textContent = data.msg || 'Lỗi thêm';
+                    existingStatus.style.color='red';
+                }
+            } catch(e){
+                existingStatus.textContent='Lỗi mạng'; existingStatus.style.color='red';
+            }
+        });
+    }
+
+    setTimeout(()=>{
+        const rows = document.querySelectorAll('#song-list-body tr');
+        rows.forEach(tr=>{
+            if(tr.querySelector('.quick-add-btn')) return;
+            const songId = tr.getAttribute('data-song-id');
+            if(!songId) return;
+            const cell = document.createElement('td');
+            cell.style.textAlign='center';
+            cell.innerHTML = `<button class="quick-add-btn" data-song-id="${songId}" title="Thêm vào playlist được chọn" style="background:none;border:none;color:#0af;cursor:pointer;font-size:16px;">➕</button>`;
+            tr.appendChild(cell);
+        });
+        document.getElementById('song-list-body').addEventListener('click', async (e)=>{
+            if(e.target.classList && e.target.classList.contains('quick-add-btn')){
+                const songId = e.target.getAttribute('data-song-id');
+                const playlistId = existingSelect.value;
+                if(!playlistId){ existingStatus.textContent='Chọn playlist'; existingStatus.style.color='red'; return; }
+                existingStatus.textContent='Đang thêm...'; existingStatus.style.color='gray';
+                const token = localStorage.getItem('access_token');
+                const headers={'Content-Type':'application/json'}; if(token) headers['Authorization']='Bearer '+token;
+                try {
+                    const r = await fetch('/api/playlists/'+playlistId+'/add_song', {method:'POST', headers, credentials:'include', body: JSON.stringify({song_id: parseInt(songId)})});
+                    const data = await r.json();
+                    if(r.ok){ existingStatus.textContent='Đã thêm 1 bài'; existingStatus.style.color='green'; }
+                    else { existingStatus.textContent=data.msg||'Lỗi'; existingStatus.style.color='red'; }
+                } catch(err){ existingStatus.textContent='Lỗi mạng'; existingStatus.style.color='red'; }
+            }
+        });
+    }, 800);
+});
+</script>
+{% endblock %}

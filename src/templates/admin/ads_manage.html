@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Quản lý quảng cáo{% endblock %}
+{% block content %}
+<h2>Quản lý quảng cáo</h2>
+<form id="ad-form" method="POST" enctype="multipart/form-data">
+    <label>Tiêu đề quảng cáo:</label><br>
+    <input type="text" name="title" required><br><br>
+    <label>Link quảng cáo:</label><br>
+    <input type="text" name="link"><br><br>
+    <label>Ảnh quảng cáo:</label><br>
+    <input type="file" name="image" accept="image/*"><br><br>
+    <label>File mp3 quảng cáo (tối đa 15 giây):</label><br>
+    <input type="file" name="mp3" accept="audio/mp3"><br><br>
+    <label>File mp4 quảng cáo (tối đa 15 giây):</label><br>
+    <input type="file" name="mp4" accept="video/mp4"><br><br>
+    <label>Trạng thái:</label>
+    <select name="active">
+        <option value="1">Hiển thị</option>
+        <option value="0">Ẩn</option>
+    </select><br><br>
+    <button type="submit">Thêm quảng cáo</button>
+</form>
+<hr>
+<h3>Danh sách quảng cáo</h3>
+<div id="ads-list">
+    <!-- Danh sách quảng cáo sẽ được render ở đây -->
+</div>
+<script>
+// TODO: AJAX load danh sách quảng cáo và xử lý submit form
+</script>
+{% endblock %}

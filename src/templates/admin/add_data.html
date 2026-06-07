@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Thêm dữ liệu{% endblock %}
+{% block content %}
+<div class="admin-container">
+    <h1>Thêm dữ liệu mới</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <h2>Thêm Thể loại</h2>
+    <form method="POST" action="{{ url_for('admin.add_data') }}">
+        <input type="hidden" name="data_type" value="genre">
+        <label for="genre_name">Tên thể loại:</label>
+        <input type="text" id="genre_name" name="genre_name" required><br>
+        <label for="genre_image_path">Đường dẫn ảnh (ex: images/rap.png):</label>
+        <input type="text" id="genre_image_path" name="genre_image_path" required><br>
+        <label for="genre_color_class">Màu (yellow, teal, pink, ...):</label>
+        <input type="text" id="genre_color_class" name="genre_color_class" required><br>
+        <button type="submit">Thêm Thể loại</button>
+    </form>
+
+    <h2>Thêm Nghệ sĩ</h2>
+    <form method="POST" action="{{ url_for('admin.add_data') }}">
+        <input type="hidden" name="data_type" value="artist">
+        <label for="artist_name">Tên nghệ sĩ:</label>
+        <input type="text" id="artist_name" name="artist_name" required><br>
+        <label for="artist_image_path">Đường dẫn ảnh (ex: images/sontungmtp.png):</label>
+        <input type="text" id="artist_image_path" name="artist_image_path" required><br>
+        <button type="submit">Thêm Nghệ sĩ</button>
+    </form>
+
+    <h2>Thêm Bài hát</h2>
+    <form method="POST" action="{{ url_for('admin.add_data') }}">
+        <input type="hidden" name="data_type" value="song">
+        <label for="song_title">Tiêu đề bài hát:</label>
+        <input type="text" id="song_title" name="song_title" required><br>
+        <label for="song_mp3_path">Đường dẫn file MP3 (ex: music/abc.mp3):</label>
+        <input type="text" id="song_mp3_path" name="song_mp3_path" required><br>
+        <label for="song_artist_id">ID Nghệ sĩ:</label>
+        <select id="song_artist_id" name="song_artist_id" required>
+            {% for artist in artists %}
+            <option value="{{ artist.id }}">{{ artist.name }}</option>
+            {% endfor %}
+        </select><br>
+        <label for="song_genre_id">ID Thể loại:</label>
+        <select id="song_genre_id" name="song_genre_id" required>
+            {% for genre in genres %}
+            <option value="{{ genre.id }}">{{ genre.name }}</option>
+            {% endfor %}
+        </select><br>
+        <button type="submit">Thêm Bài hát</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% block title %}Bảng Xếp Hạng{% endblock %}
+{% block content %}
+<div class="charts-container" style="padding:25px;max-width:1150px;margin:0 auto;color:#fff;">
+  <h1 style="margin-bottom:24px;">🔥 Bảng Xếp Hạng Lượt Nghe</h1>
+  <!-- Bộ lọc thời gian -->
+  <div class="time-filter" style="margin-bottom:24px;display:flex;gap:12px;">
+    <a href="/bxh?filter=all" class="filter-btn {% if current_filter == 'all' %}active{% endif %}" 
+       style="padding:10px 20px;background:{% if current_filter == 'all' %}#1db954{% else %}#333{% endif %};color:#fff;text-decoration:none;border-radius:24px;font-weight:600;transition:all 0.2s;">
+      Tất cả
+    </a>
+    <a href="/bxh?filter=week" class="filter-btn {% if current_filter == 'week' %}active{% endif %}"
+       style="padding:10px 20px;background:{% if current_filter == 'week' %}#1db954{% else %}#333{% endif %};color:#fff;text-decoration:none;border-radius:24px;font-weight:600;transition:all 0.2s;">
+      Tuần này
+    </a>
+    <a href="/bxh?filter=month" class="filter-btn {% if current_filter == 'month' %}active{% endif %}"
+       style="padding:10px 20px;background:{% if current_filter == 'month' %}#1db954{% else %}#333{% endif %};color:#fff;text-decoration:none;border-radius:24px;font-weight:600;transition:all 0.2s;">
+      Tháng này
+    </a>
+  </div>
+
+  <!-- TOP BÀI HÁT -->
+  <h2 style="margin:32px 0 12px;font-size:22px;display:flex;align-items:center;justify-content:space-between;">
+    <span>🎵 Top Bài Hát</span>
+  </h2>
+
+  <table style="width:100%;border-collapse:collapse;">
+    <thead>
+      <tr style="text-align:left;border-bottom:2px solid #444;">
+        <th style="padding:8px;width:50px;">#</th>
+        <th style="padding:8px;">Bài hát</th>
+        <th style="padding:8px;">Nghệ sĩ</th>
+        <th style="padding:8px;width:120px;">Lượt nghe</th>
+      </tr>
+    </thead>
+    <tbody id="bxh-song-list">
+      {% if ranking and ranking|length > 0 %}
+        {% for row in ranking %}
+  <tr class="song-row" title="Nhấn để phát" data-song-id="{{ row.song.id }}" data-mp3-path="{{ row.song.mp3_path }}" data-album-image="{% if row.song.image_path %}{% if row.song.image_path.startswith('/static/') %}{{ row.song.image_path }}{% else %}/static/{{ row.song.image_path }}{% endif %}{% else %}{% if row.song.album and row.song.album.cover_image_path %}{% if row.song.album.cover_image_path.startswith('/static/') %}{{ row.song.album.cover_image_path }}{% else %}/static/{{ row.song.album.cover_image_path }}{% endif %}{% else %}/static/images/default.jpg{% endif %}{% endif %}" style="border-bottom:1px solid #333;">
+          <td style="padding:8px;font-weight:bold;">{{ row.position }}</td>
+          <td style="padding:8px;">{{ row.song.title }}</td>
+          <td style="padding:8px;">{{ row.song.artist_name or '—' }}</td>
+          <td style="padding:8px;" class="listen-count"><span>{{ row.plays }}</span></td>
+        </tr>
+        {% endfor %}
+      {% endif %}
+    </tbody>
+    <tr id="bxh-empty-msg" style="display:none;"><td colspan="4" style="color:#ccc;text-align:center;">Chưa có dữ liệu BXH.</td></tr>
+  </table>
+
+  <style>
+  .filter-btn:hover {
+    background: #1ed760 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(29, 185, 84, 0.4);
+  }
+  .filter-btn.active {
+    background: #1db954 !important;
+  }
+  /* Make ranking rows clearly clickable like playlist rows */
+  tr.song-row { cursor: pointer; }
+  tr.song-row:hover { background: rgba(255,255,255,0.02); }
+  </style>
+  <script>
+  // BXH render động bằng JS từ API, chỉ hiển thị text tên bài hát và nghệ sĩ
+  document.addEventListener('DOMContentLoaded', function() {
+    function getBXHFilter() {
+      const url = new URL(window.location.href);
+      return url.searchParams.get('filter') || 'all';
+    }
+    function renderBXHSongs(data) {
+      const tbody = document.getElementById('bxh-song-list');
+      const emptyMsg = document.getElementById('bxh-empty-msg');
+      if (!tbody) return;
+      // If server already rendered rows, don't overwrite unless empty
+      const serverRowsExist = tbody.querySelectorAll('tr[data-song-id]').length > 0;
+      if (serverRowsExist && (!data || !data.length)) {
+        if (emptyMsg) emptyMsg.style.display = 'none';
+        return; // keep server-rendered rows
+      }
+      if (!data || !data.length) {
+        tbody.innerHTML = '';
+        if (emptyMsg) emptyMsg.style.display = '';
+        return;
+      }
+      if (emptyMsg) emptyMsg.style.display = 'none';
+      const filter = getBXHFilter();
+      tbody.innerHTML = data.map(row => {
+        let plays = 0;
+        if (filter === 'all') {
+          plays = row.total_plays ?? row.song.listen_count ?? 0;
+        } else if (filter === 'week') {
+          plays = row.week_plays ?? 0;
+        } else {
+          plays = row.month_plays ?? 0;
+        }
+        const songId = row.song.id || (row.song && row.song.id) || '';
+        return `
+  <tr class="song-row" title="Nhấn để phát" data-song-id="${songId}" data-mp3-path="${row.song.mp3_path || ''}" data-album-image="${(row.song.image_path || (row.song.album && row.song.album.cover_image_path) || '/static/images/default.jpg').startsWith('/static/') ? (row.song.image_path || (row.song.album && row.song.album.cover_image_path) || '/static/images/default.jpg') : ('/static/' + (row.song.image_path || (row.song.album && row.song.album.cover_image_path) || 'images/default.jpg'))}" style="border-bottom:1px solid #333;">
+          <td style="padding:8px;font-weight:bold;">${row.position}</td>
+          <td style="padding:8px;">${row.song.title}</td>
+          <td style="padding:8px;">${row.song.artist_name || '—'}</td>
+          <td style="padding:8px;" class="listen-count"><span>${plays}</span></td>
+        </tr>
+        `;
+      }).join('');
+      // After rendering, bind any player controls later (player.js will attach listeners globally)
+    }
+    function fetchBXHSongs() {
+      const filter = getBXHFilter();
+      fetch(`/api/bxh/songs?filter=${filter}`)
+        .then(r => r.json())
+        .then(renderBXHSongs)
+        .catch(() => {
+          renderBXHSongs([]);
+        });
+    }
+    // If server rendered rows exist in DOM, skip API fetch to avoid flashing.
+    // Use a runtime DOM check (safer than template-injected booleans which can break JS if mis-rendered).
+    const hasServerRows = !!document.querySelector('#bxh-song-list tr[data-song-id]');
+    if (!hasServerRows) {
+      fetchBXHSongs();
+    } else {
+      // server-rendered rows present; player.js will bind click handlers and update listen-counts
+      // ensure dynamic bindings are attached by triggering a bind call
+      if (window.bindSongRows) {
+        try { window.bindSongRows(); } catch(e) { /* noop */ }
+      }
+    }
+  });
+  </script>
+  <!-- TOP ALBUM -->
+  <h2 style="margin:40px 0 12px;font-size:22px;">💿 Top Album</h2>
+  {% if ranking_albums and ranking_albums|length > 0 %}
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="text-align:left;border-bottom:2px solid #444;">
+          <th style="padding:8px;width:50px;">#</th>
+          <th style="padding:8px;">Album</th>
+          <th style="padding:8px;">Nghệ sĩ</th>
+          <th style="padding:8px;width:140px;">Tổng lượt nghe</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in ranking_albums %}
+        <tr style="border-bottom:1px solid #333;">
+          <td style="padding:8px;font-weight:bold;">{{ row.position }}</td>
+          <td style="padding:8px;">{{ row.album.title }}</td>
+          <td style="padding:8px;">{{ row.album.artist.name if row.album.artist else '—' }}</td>
+          <td style="padding:8px;">{{ row.plays }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p style="margin-top:10px;color:#ccc;">Chưa có dữ liệu lượt nghe album. Hiển thị album mới nhất.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-top:16px;">
+      {% for al in fallback_albums %}
+      <div style="background:#1e1e1e;padding:12px;border-radius:8px;">
+        <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ al.title }}</div>
+        <div style="font-size:12px;color:#999;">{{ al.artist.name if al.artist else 'Không rõ nghệ sĩ' }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+</div>
+
+<style>
+.filter-btn:hover {
+  background: #1ed760 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.4);
+}
+
+.filter-btn.active {
+  background: #1db954 !important;
+}
+</style>
+<script>
+// BXH render động bằng JS từ API, chỉ hiển thị text tên bài hát và nghệ sĩ
+document.addEventListener('DOMContentLoaded', function() {
+  function getBXHFilter() {
+    const url = new URL(window.location.href);
+    return url.searchParams.get('filter') || 'all';
+  }
+  function renderBXHSongs(data) {
+    const tbody = document.getElementById('bxh-song-list');
+    const emptyMsg = document.getElementById('bxh-empty-msg');
+    if (!tbody) return;
+    if (!data || !data.length) {
+      tbody.innerHTML = '';
+      if (emptyMsg) emptyMsg.style.display = '';
+      return;
+    }
+    if (emptyMsg) emptyMsg.style.display = 'none';
+    // Lấy filter hiện tại để hiển thị đúng cột lượt nghe
+    const filter = getBXHFilter();
+    tbody.innerHTML = data.map(row => {
+      let plays = 0;
+      if (filter === 'all') {
+        plays = row.total_plays ?? 0;
+      } else if (filter === 'week') {
+        plays = row.week_plays ?? 0;
+      } else {
+        plays = row.month_plays ?? 0;
+      }
+      return `
+        <tr style="border-bottom:1px solid #333;">
+          <td style="padding:8px;font-weight:bold;">${row.position}</td>
+          <td style="padding:8px;">${row.song.title}</td>
+          <td style="padding:8px;">${row.song.artist_name || '—'}</td>
+          <td style="padding:8px;">${plays}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+  function fetchBXHSongs() {
+    const filter = getBXHFilter();
+    fetch(`/api/bxh/songs?filter=${filter}`)
+      .then(r => r.json())
+      .then(renderBXHSongs)
+      .catch(() => {
+        renderBXHSongs([]);
+      });
+  }
+  fetchBXHSongs();
+});
+</script>
+{% endblock %}

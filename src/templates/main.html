@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}Trang chủ - Melune{% endblock %}
+
+{% block head_extra %}
+<style>
+/* Scrollbar tối giản cho các container scroll ngang */
+.genres-row::-webkit-scrollbar,
+.artists-panel::-webkit-scrollbar,
+.albums-row::-webkit-scrollbar,
+.playlists-row::-webkit-scrollbar {
+    height: 6px;
+}
+
+.genres-row::-webkit-scrollbar-track,
+.artists-panel::-webkit-scrollbar-track,
+.albums-row::-webkit-scrollbar-track,
+.playlists-row::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.genres-row::-webkit-scrollbar-thumb,
+.artists-panel::-webkit-scrollbar-thumb,
+.albums-row::-webkit-scrollbar-thumb,
+.playlists-row::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    transition: background 0.2s;
+    opacity: 0;
+}
+
+/* Hiện scrollbar khi hover vào container */
+.genres-row:hover::-webkit-scrollbar-thumb,
+.artists-panel:hover::-webkit-scrollbar-thumb,
+.albums-row:hover::-webkit-scrollbar-thumb,
+.playlists-row:hover::-webkit-scrollbar-thumb {
+    opacity: 1;
+}
+
+.genres-row::-webkit-scrollbar-thumb:hover,
+.artists-panel::-webkit-scrollbar-thumb:hover,
+.albums-row::-webkit-scrollbar-thumb:hover,
+.playlists-row::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.35);
+}
+
+/* Firefox */
+.genres-row,
+.artists-panel,
+.albums-row,
+.playlists-row {
+    scrollbar-width: thin;
+    scrollbar-color: transparent rgba(255, 255, 255, 0.05);
+}
+
+.genres-row:hover,
+.artists-panel:hover,
+.albums-row:hover,
+.playlists-row:hover {
+    scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="section-header">
+        <h2>Thể loại</h2>
+    </div>
+    <div class="genres-row" id="genres-container" style="display:flex;flex-wrap:nowrap;overflow-x:auto;gap:24px;padding-bottom:12px;-webkit-overflow-scrolling:touch;">
+        {% for genre in genres %}
+            <a href="/genre/{{ genre.id }}" style="flex:0 0 auto; text-decoration:none; color:inherit;">
+                <div class="card {{ genre.color_class or 'default-color' }}" style="width:180px; min-width:180px; margin:0 8px;">
+                    <div class="title">{{ genre.name }}</div>
+                    <img src="{{ url_for('static', filename=genre.image_path or 'images/default_genre.png') }}" alt="{{ genre.name }}">
+                </div>
+            </a>
+        {% else %}
+            <p>Chưa có thể loại nào.</p>
+        {% endfor %}
+    </div>
+
+    <div class="section-header" style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+        <h2 style="margin:0;">Nghệ sĩ</h2>
+        {% if trending_generated_at %}
+            <small id="artists-meta" style="color:#888;font-size:12px;">Cập nhật {{ trending_generated_at.strftime('%d/%m/%Y %H:%M') }}</small>
+        {% endif %}
+    </div>
+    <div class="artist-tabs" style="display:flex;gap:18px;border-bottom:1px solid #222;margin:6px 0 18px 0;">
+        <button class="artist-tab active" data-tab="all" style="background:none;border:none;border-bottom:2px solid #1db954;color:#fff;padding:8px 4px;font-weight:600;cursor:pointer;">Tất cả</button>
+        <button class="artist-tab" data-tab="trending" style="background:none;border:none;border-bottom:2px solid transparent;color:#aaa;padding:8px 4px;font-weight:600;cursor:pointer;">Đang nổi</button>
+        <button class="artist-tab" data-tab="recommended" style="background:none;border:none;border-bottom:2px solid transparent;color:#aaa;padding:8px 4px;font-weight:600;cursor:pointer;">Dành cho bạn</button>
+    </div>
+    <div id="artists-tab-content" style="min-height:190px;">
+        <!-- All artists horizontal scroll -->
+        <div class="artists-panel" data-panel="all" style="display:flex;flex-wrap:nowrap;overflow-x:auto;gap:18px;padding:6px 0 14px 0;-webkit-overflow-scrolling:touch;">
+            {% for artist in artists %}
+            <a href="/artist/{{ artist.id }}" style="flex:0 0 auto;text-decoration:none;color:inherit;">
+                <div class="artist-card" style="width:140px;min-width:140px;background:#181818;border-radius:16px;padding:14px 10px 12px 10px;display:flex;flex-direction:column;align-items:center;gap:10px;height:190px;box-shadow:0 2px 8px rgba(0,0,0,0.12);">
+                    <img src="{{ url_for('static', filename=artist.image_path or 'images/default_artist.png') }}" alt="{{ artist.name }}" style="width:90px;height:90px;object-fit:cover;border-radius:50%;">
+                    <h3 style="font-size:15px;margin:0 0 4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;text-align:center;">{{ artist.name }}</h3>
+                    <p style="font-size:11px;color:#aaa;margin:0;">Artist</p>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        <div class="artists-panel" data-panel="trending" style="display:none;flex-wrap:nowrap;overflow-x:auto;gap:18px;padding:6px 0 14px 0;-webkit-overflow-scrolling:touch;">
+            {% if trending_artists and trending_artists|length > 0 %}
+                {% for a in trending_artists %}
+                <a href="/artist/{{ a.id }}" style="flex:0 0 auto;text-decoration:none;color:inherit;">
+                    <div class="artist-card" style="width:140px;min-width:140px;background:#181818;border-radius:16px;padding:14px 10px 12px 10px;display:flex;flex-direction:column;align-items:center;gap:10px;height:190px;box-shadow:0 2px 8px rgba(0,0,0,0.12);">
+                        <img src="{{ url_for('static', filename=a.image_path or 'images/default_artist.png') }}" alt="{{ a.name }}" style="width:90px;height:90px;object-fit:cover;border-radius:50%;">
+                        <h3 style="font-size:15px;margin:0 0 2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;text-align:center;">{{ a.name }}</h3>
+                        <p style="font-size:11px;color:#1db954;margin:0;">🔥 {{ a.score }}</p>
+                        {% if a.smooth_score is defined %}<p style="font-size:10px;color:#6ec1ff;margin:0;">EMA {{ a.smooth_score }}</p>{% endif %}
+                        {% if a.growth_rate_pct is defined %}<p style="font-size:10px;color:#ffae42;margin:0;">↑ {{ a.growth_rate_pct }}%</p>{% endif %}
+                    </div>
+                </a>
+                {% endfor %}
+            {% else %}
+                <div style="color:#888;font-size:13px;padding:8px;">Đang tải dữ liệu...</div>
+            {% endif %}
+        </div>
+        <div class="artists-panel" data-panel="recommended" style="display:none;flex-wrap:nowrap;overflow-x:auto;gap:18px;padding:6px 0 14px 0;-webkit-overflow-scrolling:touch;">
+            <div style="color:#888;font-size:13px;padding:8px;">Đang tải đề xuất...</div>
+        </div>
+    </div>
+    <section class="content-section" style="margin-top:34px;">
+        <div class="section-header" style="margin-bottom:14px;"><h2 style="margin:0;">Album Nổi Bật</h2></div>
+        <div class="albums-row" id="albums-row" style="display:flex;flex-wrap:nowrap;overflow-x:auto;gap:20px;padding:6px 0 14px 0;-webkit-overflow-scrolling:touch;">
+            {% for album in albums %}
+            <a href="/album/{{ album.id }}" style="flex:0 0 auto;text-decoration:none;color:inherit;">
+                <div class="album-card" style="width:160px;min-width:160px;background:#181818;border-radius:16px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:10px;height:220px;">
+                    <img src="{{ url_for('static', filename=album.cover_image_path or 'images/default_album.png') }}" alt="{{ album.title }}" style="width:100%;height:120px;object-fit:cover;border-radius:12px;">
+                    <h3 style="font-size:15px;margin:0 0 4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;text-align:center;">{{ album.title }}</h3>
+                    <p style="font-size:12px;color:#aaa;margin:0;">{{ album.artist.name }}</p>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="content-section" style="margin-top:40px;">
+        <div class="section-header" style="margin-bottom:14px;"><h2 style="margin:0;">Playlist Công Khai</h2></div>
+        {% if public_playlists and public_playlists|length > 0 %}
+        <div class="playlists-row" style="display:flex;flex-wrap:nowrap;overflow-x:auto;gap:20px;padding:6px 0 14px 0;-webkit-overflow-scrolling:touch;">
+            {% for playlist in public_playlists %}
+            <a href="/playlist/{{ playlist.id }}" style="flex:0 0 auto;text-decoration:none;color:inherit;">
+                <div class="playlist-card" style="width:160px;min-width:160px;background:#181818;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;height:240px;transition:background 0.3s;" onmouseover="this.style.background='#282828'" onmouseout="this.style.background='#181818'">
+                    {% set last_song = playlist.songs.all()[-1] if playlist.songs and playlist.songs.count() > 0 else none %}
+                    {% if last_song %}
+                        {% if last_song.image_path %}
+                            {% set pl_image = last_song.image_path %}
+                        {% elif last_song.album and last_song.album.cover_image_path %}
+                            {% set pl_image = last_song.album.cover_image_path %}
+                        {% else %}
+                            {% set pl_image = 'images/playlist_image.png' %}
+                        {% endif %}
+                    {% else %}
+                        {% set pl_image = 'images/playlist_image.png' %}
+                    {% endif %}
+                    <img src="{{ url_for('static', filename=pl_image) }}" alt="{{ playlist.name }}" style="width:100%;height:120px;object-fit:cover;border-radius:12px;">
+                    <h3 style="font-size:15px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;">{{ playlist.name }}</h3>
+                    <p style="font-size:12px;color:#aaa;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ playlist.user.username if playlist.user else 'Người dùng' }}</p>
+                    <p style="font-size:11px;color:#888;margin:0;">{{ playlist.songs.count() }} bài hát</p>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="color:#888;font-size:13px;padding:8px;">Chưa có playlist công khai nào.</div>
+        {% endif %}
+    </section>
+
+    <!-- Tab switching script -->
+    <script>
+    // Initialize artist tabs - can be called multiple times safely
+    function initArtistTabs() {
+        const tabs = document.querySelectorAll('.artist-tab');
+        const panels = document.querySelectorAll('.artists-panel');
+        
+        console.log('[Tabs] Initializing:', tabs.length, 'tabs and', panels.length, 'panels');
+        
+        if (tabs.length === 0 || panels.length === 0) {
+            console.debug('[Tabs] No tabs or panels found, skipping initialization');
+            return;
+        }
+        
+        // Reset recommended panel to initial state
+        const recommendedPanel = document.querySelector('.artists-panel[data-panel="recommended"]');
+        if (recommendedPanel) {
+            recommendedPanel.removeAttribute('data-loaded');
+            recommendedPanel.innerHTML = '<div style="color:#888;font-size:13px;padding:8px;">Đang tải đề xuất...</div>';
+        }
+        
+        const setActive = (name) => {
+            console.log('[Tabs] Setting active tab:', name);
+            tabs.forEach(t => {
+                const active = t.dataset.tab === name;
+                t.classList.toggle('active', active);
+                t.style.color = active ? '#fff' : '#aaa';
+                t.style.borderBottom = active ? '2px solid #1db954' : 'none';
+            });
+            panels.forEach(p => {
+                const isActive = p.dataset.panel === name;
+                console.log('[Tabs] Panel', p.dataset.panel, 'active:', isActive);
+                if (isActive) {
+                    p.style.display = 'flex';
+                } else {
+                    p.style.display = 'none';
+                }
+            });
+        };
+        
+        // Remove existing listeners before adding new ones
+        tabs.forEach(t => {
+            const newTab = t.cloneNode(true);
+            t.parentNode.replaceChild(newTab, t);
+        });
+        
+        // Re-select tabs after cloning (to get fresh references)
+        const freshTabs = document.querySelectorAll('.artist-tab');
+        freshTabs.forEach(t => {
+            t.addEventListener('click', function() {
+                const name = this.getAttribute('data-tab');
+                console.log('[Tabs] Tab clicked:', name);
+                setActive(name);
+                
+                if(name === 'recommended'){
+                   // fetch recommended via home api if not loaded
+                   const panel = document.querySelector('.artists-panel[data-panel="recommended"]');
+                   if(panel && panel.getAttribute('data-loaded') !== 'yes'){
+                   fetch('/api/home').then(r=>r.json()).then(d=>{
+                       if(Array.isArray(d.recommended_artists)&&d.recommended_artists.length>0){
+                           panel.innerHTML = d.recommended_artists.map(a=>{
+                               const img = a.image_path ? ('/static/' + a.image_path.replace(/^\/+/,'')) : '/static/images/default_artist.png';
+                               return `<a href="/artist/${a.id}" style="text-decoration:none;color:inherit;">
+                                   <div class="artist-card" style="background:#181818;border-radius:16px;padding:14px 10px 12px 10px;display:flex;flex-direction:column;align-items:center;gap:10px;height:190px;box-shadow:0 2px 8px rgba(0,0,0,0.12);">
+                                       <img src="${img}" alt="${a.name}" style="width:90px;height:90px;object-fit:cover;border-radius:50%;">
+                                       <h3 style="font-size:15px;margin:0 0 4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;text-align:center;">${a.name}</h3>
+                                       <p style="font-size:11px;color:#aaa;margin:0;">Artist</p>
+                                   </div>
+                               </a>`;}).join('');
+                       } else {
+                           panel.innerHTML = '<div style="color:#888;font-size:13px;padding:8px;">Chưa có dữ liệu đề xuất.</div>';
+                       }
+                       panel.setAttribute('data-loaded','yes');
+                   }).catch(()=>{
+                       panel.innerHTML='<div style="color:#d55;font-size:13px;padding:8px;">Lỗi tải đề xuất.</div>';
+                       panel.setAttribute('data-loaded','yes');
+                   });
+               }
+            }
+        });
+        });
+        
+        // Set initial active tab
+        setActive('all');
+    }
+    
+    // Initialize on first load
+    initArtistTabs();
+    </script>
+{% endblock %}

@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% block title %}Nghệ sĩ{% endblock %}
+
+{% block head_extra %}
+<style>
+#follow-btn {
+    padding: 8px 24px;
+    font-weight: 600;
+    font-size: 14px;
+    border-radius: 24px;
+    background: transparent;
+    color: #fff;
+    border: 2px solid #fff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#follow-btn:hover {
+    transform: scale(1.05);
+    border-color: #1db954;
+    background: rgba(29, 185, 84, 0.1);
+}
+
+#follow-btn.following {
+    background: #1db954;
+    border-color: #1db954;
+    color: #fff;
+}
+
+#follow-btn.following:hover {
+    background: #1aa34a;
+    border-color: #1aa34a;
+    transform: scale(1.05);
+}
+
+#follow-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: scale(1);
+}
+
+#follower-count {
+    font-size: 15px;
+    color: #b3b3b3;
+    font-weight: 500;
+}
+
+#follower-count::before {
+    content: "👥 ";
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<input type="hidden" id="entity-id" value="{{ artist_id }}">
+<input type="hidden" id="entity-type" value="artist">
+
+<div class="entity-page">
+    <header class="entity-header" id="entity-header">
+        <div class="entity-info" style="flex-wrap:wrap;">
+            <img id="entity-image" src="" alt="Entity Image" class="entity-image">
+            <div style="flex:1;">
+                <h1 id="entity-name"></h1>
+                <div id="artist-follow-info" style="margin-top:16px;display:flex;align-items:center;gap:16px;">
+                    <span id="follower-count" style="">0 follower</span>
+                    <button id="follow-btn" class="btn btn-follow">
+                        <span class="follow-text">Follow</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="song-list-container">
+        <table class="song-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Tiêu đề</th>
+                    <th>Nghệ sĩ</th>
+                    <th>Lượt nghe</th>
+                    <th>Thích</th>
+                </tr>
+            </thead>
+            <tbody id="song-list-body"></tbody>
+        </table>
+    </div>
+</div>
+<script>
+// Script follow/unfollow nghệ sĩ
+const artistId = document.getElementById('entity-id')?.value;
+const followBtn = document.getElementById('follow-btn');
+const followerCountSpan = document.getElementById('follower-count');
+
+if (!followBtn) {
+    console.error('Không tìm thấy nút Follow!');
+    alert('Lỗi: Không tìm thấy nút Follow trên trang.');
+} else {
+
+function updateFollowInfo() {
+    fetch(`/api/artist/${artistId}/follow-info`)
+        .then(res => {
+            if (!res.ok) throw new Error('Lỗi lấy thông tin follow');
+            return res.json();
+        })
+        .then(data => {
+            followerCountSpan.textContent = `${data.follower_count} follower${data.follower_count !== 1 ? 's' : ''}`;
+            const followText = followBtn.querySelector('.follow-text');
+            if (data.is_following) {
+                followText.textContent = 'Following';
+                followBtn.classList.add('following');
+            } else {
+                followText.textContent = 'Follow';
+                followBtn.classList.remove('following');
+            }
+        })
+        .catch(err => {
+            console.error('Lỗi updateFollowInfo:', err);
+            followerCountSpan.textContent = 'Lỗi tải follow';
+        });
+}
+
+
+function getAccessToken() {
+    let token = localStorage.getItem('access_token');
+    if (!token) {
+        const tokenCookie = document.cookie.split('; ').find(r => r.startsWith('access_token='));
+        if (tokenCookie) token = tokenCookie.split('=')[1];
+    }
+    return token;
+}
+    followBtn.addEventListener('click', function() {
+        if (followBtn.disabled) return;
+        const token = getAccessToken();
+        console.log('Token used for follow:', token);
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        followBtn.disabled = true;
+        followBtn.style.opacity = 0.6;
+        fetch(`/api/artist/${artistId}/follow`, {
+            method: 'POST',
+            headers,
+            credentials: 'include' // Luôn gửi cookie lên backend
+        })
+        .then(res => {
+            if (!res.ok) throw new Error('Lỗi follow/unfollow');
+            return res.json();
+        })
+        .then(() => {
+            updateFollowInfo();
+            try { if (window.loadFollowedArtistsSidebar) window.loadFollowedArtistsSidebar(getAccessToken()); } catch(e){}
+        })
+        .catch(err => {
+            console.error('Lỗi khi follow/unfollow:', err);
+            alert('Có lỗi khi thực hiện thao tác. Vui lòng thử lại!');
+        })
+        .finally(() => {
+            followBtn.disabled = false;
+            followBtn.style.opacity = 1;
+        });
+    });
+
+    updateFollowInfo();
+}
+
+// Load thông tin nghệ sĩ và bài hát
+(function loadArtistData() {
+    const entityId = document.getElementById('entity-id')?.value;
+    if (!entityId) {
+        console.error('Không tìm thấy artist ID');
+        return;
+    }
+
+    // Load thông tin nghệ sĩ và bài hát từ một API
+    fetch(`/api/artist/${entityId}`)
+        .then(res => {
+            if (!res.ok) throw new Error('Lỗi tải thông tin nghệ sĩ');
+            return res.json();
+        })
+        .then(data => {
+            // Cập nhật tên và ảnh nghệ sĩ
+            const entityName = document.getElementById('entity-name');
+            const entityImage = document.getElementById('entity-image');
+            
+            if (entityName) entityName.textContent = data.name || 'Nghệ sĩ';
+            if (entityImage) {
+                const imagePath = data.image_path || 'images/default_artist.jpg';
+                entityImage.src = imagePath.startsWith('/static/') ? imagePath : `/static/${imagePath}`;
+                entityImage.alt = data.name || 'Artist';
+            }
+
+            // Load danh sách bài hát
+            const songListBody = document.getElementById('song-list-body');
+            if (!songListBody) return;
+
+            if (!data.songs || data.songs.length === 0) {
+                songListBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:#888;">Nghệ sĩ chưa có bài hát nào</td></tr>';
+                return;
+            }
+
+            // Render bài hát
+            songListBody.innerHTML = data.songs.map((song, index) => {
+                const mp3Path = song.mp3_path ? (song.mp3_path.startsWith('/static/') ? song.mp3_path : `/static/${song.mp3_path}`) : '';
+                const songImage = song.image_path ? (song.image_path.startsWith('/static/') ? song.image_path : `/static/${song.image_path}`) : (song.album_image_path ? (song.album_image_path.startsWith('/static/') ? song.album_image_path : `/static/${song.album_image_path}`) : '/static/images/default.jpg');
+                
+                return `
+                <tr class="song-row" 
+                    data-mp3-path="${mp3Path}"
+                    data-title="${song.title || ''}"
+                    data-artist-name="${song.artist_name || ''}"
+                    data-album-image="${songImage}"
+                    data-song-id="${song.id}">
+                    <td>${index + 1}</td>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <img src="${songImage}" 
+                                 alt="${song.title}" 
+                                 style="width:40px;height:40px;object-fit:cover;border-radius:4px;">
+                            <span class="song-title-link">${song.title}</span>
+                        </div>
+                    </td>
+                    <td>${song.artist_name || 'Unknown'}</td>
+                    <td>${song.listen_count || 0}</td>
+                    <td>
+                        <button class="like-button" data-song-id="${song.id}">
+                            <i class="fa${song.is_liked ? 's' : 'r'} fa-heart like-icon"></i>
+                        </button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+
+            // Attach event listeners để có thể click phát nhạc
+            if (typeof attachSongRowEvents === 'function') {
+                attachSongRowEvents();
+            }
+        })
+        .catch(err => {
+            console.error('Lỗi load nghệ sĩ:', err);
+            const songListBody = document.getElementById('song-list-body');
+            if (songListBody) {
+                songListBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:#f55;">Lỗi tải dữ liệu nghệ sĩ</td></tr>';
+            }
+        });
+})();
+</script>
+{% endblock %}

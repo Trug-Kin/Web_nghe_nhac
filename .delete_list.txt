@@ -1,0 +1,5 @@
+c:\Users\HP\web_nghe_nhac\src\templates\manage_users.html
+c:\Users\HP\web_nghe_nhac\DoAnCoSo\css\manage_users.css
+c:\Users\HP\web_nghe_nhac\DoAnCoSo\js\manage_users.js
+c:\Users\HP\web_nghe_nhac\src\admin\user_management.py
+c:\Users\HP\web_nghe_nhac\src\admin\__pycache__\user_management.cpython-39.pyc

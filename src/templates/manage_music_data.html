@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+{% block title %}Quản lý Dữ liệu Âm nhạc - Admin{% endblock %}
+{% block content %}
+<div class="container">
+    <h1 style="color:white; margin-bottom: 30px;">Quản lý Dữ liệu Âm nhạc</h1>
+    <div style="color: #fff; margin-bottom: 10px; font-size: 16px;">
+        Debug: Genres: {{ genres|length }}, Artists: {{ artists|length }}, Albums: {{ albums|length }}, Songs: {{ songs|length }}
+    </div>
+    <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+        <!-- Quản lý Thể loại -->
+        <div style="flex:1; min-width:320px; background:rgba(255,255,255,0.12); border-radius:16px; padding:20px; margin-bottom:30px;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+                <h2 style="color:#fff;">Thể loại</h2>
+                <button onclick="openModal('addGenreModal')" style="background:#667eea; color:#fff; border:none; border-radius:6px; padding:8px 16px; cursor:pointer; font-size:15px; display:flex; align-items:center; gap:6px;"><i class="fa fa-plus"></i> Thêm</button>
+            </div>
+            <div id="genres-container" style="margin-top:15px;">
+                {% if genres|length > 0 %}
+                    {% for genre in genres %}
+                    <div class="item-card" data-id="{{ genre.id }}" style="background:rgba(255,255,255,0.18); border-radius:8px; padding:10px 16px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; color:#fff;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            {% if genre.image_path %}
+                            <img src="/static/{{ genre.image_path }}" alt="{{ genre.name }}" style="width:38px; height:38px; object-fit:cover; border-radius:8px;">
+                            {% else %}
+                            <div style="width:38px; height:38px; background:#ccc; border-radius:8px;"></div>
+                            {% endif %}
+                            <span style="font-size:17px;">{{ genre.name }}</span>
+                        </div>
+                        <div>
+                            <button class="edit-btn" data-genre-id="{{ genre.id }}" style="background:transparent; border:none; color:#ffd700; font-size:18px; cursor:pointer;"><i class="fa fa-edit"></i></button>
+                            <button class="delete-btn" data-genre-id="{{ genre.id }}" data-genre-name="{{ genre.name }}" style="background:transparent; border:none; color:#ff4d4f; font-size:18px; cursor:pointer;"><i class="fa fa-trash"></i></button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div style="color:#eee;">Chưa có thể loại nào.</div>
+                {% endif %}
+            </div>
+        </div>
+        <!-- Quản lý Nghệ sĩ -->
+        <div style="flex:1; min-width:320px; background:rgba(255,255,255,0.12); border-radius:16px; padding:20px; margin-bottom:30px;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+                <h2 style="color:#fff;">Nghệ sĩ</h2>
+                <button onclick="openModal('addArtistModal')" style="background:#667eea; color:#fff; border:none; border-radius:6px; padding:8px 16px; cursor:pointer; font-size:15px; display:flex; align-items:center; gap:6px;"><i class="fa fa-plus"></i> Thêm</button>
+            </div>
+            <div id="artists-container" style="margin-top:15px;">
+                {% if artists|length > 0 %}
+                    {% for artist in artists %}
+                    <div class="item-card" data-id="{{ artist.id }}" style="background:rgba(255,255,255,0.18); border-radius:8px; padding:10px 16px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; color:#fff;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            {% if artist.image_path %}
+                            <img src="/static/{{ artist.image_path }}" alt="{{ artist.name }}" style="width:38px; height:38px; object-fit:cover; border-radius:8px;">
+                            {% else %}
+                            <div style="width:38px; height:38px; background:#ccc; border-radius:8px;"></div>
+                            {% endif %}
+                            <span style="font-size:17px;">{{ artist.name }}</span>
+                        </div>
+                        <div>
+                            <button class="edit-btn" data-artist-id="{{ artist.id }}" style="background:transparent; border:none; color:#ffd700; font-size:18px; cursor:pointer;"><i class="fa fa-edit"></i></button>
+                            <button class="delete-btn" data-artist-id="{{ artist.id }}" data-artist-name="{{ artist.name }}" style="background:transparent; border:none; color:#ff4d4f; font-size:18px; cursor:pointer;"><i class="fa fa-trash"></i></button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div style="color:#eee;">Chưa có nghệ sĩ nào.</div>
+                {% endif %}
+            </div>
+        </div>
+        <!-- Quản lý Album -->
+        <div style="flex:1; min-width:320px; background:rgba(255,255,255,0.12); border-radius:16px; padding:20px; margin-bottom:30px;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+                <h2 style="color:#fff;">Album</h2>
+                <button onclick="openModal('addAlbumModal')" style="background:#667eea; color:#fff; border:none; border-radius:6px; padding:8px 16px; cursor:pointer; font-size:15px;"><i class="fa fa-plus"></i> Thêm</button>
+            </div>
+            <div id="albums-container" style="margin-top:15px;">
+                {% if albums|length > 0 %}
+                    {% for album in albums %}
+                    <div class="item-card" data-id="{{ album.id }}" style="background:rgba(255,255,255,0.18); border-radius:8px; padding:10px 16px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; color:#fff;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            {% if album.cover_image_path %}
+                                {% if album.cover_image_path.startswith('images/albums/') %}
+                                    <img src="/static/{{ album.cover_image_path }}" alt="{{ album.title }}" style="width:38px; height:38px; object-fit:cover; border-radius:8px;">
+                                {% else %}
+                                    <img src="/static/images/albums/{{ album.cover_image_path }}" alt="{{ album.title }}" style="width:38px; height:38px; object-fit:cover; border-radius:8px;">
+                                {% endif %}
+                            {% else %}
+                                <div style="width:38px; height:38px; background:#ccc; border-radius:8px;"></div>
+                            {% endif %}
+                            <span style="font-size:17px;">{{ album.title }}</span>
+                        </div>
+                        <div>
+                            <button class="edit-btn" data-album-id="{{ album.id }}" style="background:transparent; border:none; color:#ffd700; font-size:18px; cursor:pointer;"><i class="fa fa-edit"></i></button>
+                            <button class="delete-btn" data-album-id="{{ album.id }}" data-album-title="{{ album.title }}" style="background:transparent; border:none; color:#ff4d4f; font-size:18px; cursor:pointer;"><i class="fa fa-trash"></i></button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div style="color:#eee;">Chưa có album nào.</div>
+                {% endif %}
+<!-- Modal Thêm Album -->
+<div id="addAlbumModal" class="modal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100vw; height:100vh; overflow:auto; background:rgba(0,0,0,0.5);">
+    <div style="background:#222; margin:60px auto; padding:30px 24px 18px 24px; border-radius:12px; max-width:400px; color:#fff; position:relative;">
+    <span onclick="closeModal('addAlbumModal')" style="position:absolute;top:12px;right:18px;font-size:22px;cursor:pointer;">&times;</span>
+        <h3 style="margin-bottom:18px;">Thêm Album mới</h3>
+        <form id="addAlbumForm" enctype="multipart/form-data">
+            <div style="margin-bottom:12px;">
+                <label for="add_album_title">Tên album:</label>
+                <input type="text" id="add_album_title" name="title" required style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #888;">
+            </div>
+            <div style="margin-bottom:12px;">
+                <label for="add_album_artist_id">Nghệ sĩ:</label>
+                <select id="add_album_artist_id" name="artist_id" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #888;">
+                    <option value="">-- Chọn nghệ sĩ --</option>
+                    {% for artist in artists %}
+                        <option value="{{ artist.id }}">{{ artist.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label for="add_album_cover_file">Ảnh bìa:</label>
+                <input type="file" id="add_album_cover_file" name="image" accept="image/*">
+            </div>
+            <div style="text-align:right;">
+                <button type="button" onclick="closeModal('addAlbumModal')" style="margin-right:10px;">Hủy</button>
+                <button type="submit" style="background:#667eea;color:#fff;border:none;border-radius:6px;padding:8px 18px;">Thêm</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Thêm Nghệ sĩ (dạng bảng, luôn có trong DOM) -->
+<div id="addArtistModal" class="modal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100vw; height:100vh; overflow:auto; background:rgba(0,0,0,0.5);">
+    <div style="background:#222; margin:60px auto; padding:30px 24px 18px 24px; border-radius:12px; max-width:420px; color:#fff; position:relative; box-shadow:0 8px 32px 0 rgba(31,38,135,0.37);">
+    <span onclick="closeModal('addArtistModal')" style="position:absolute;top:12px;right:18px;font-size:22px;cursor:pointer;">&times;</span>
+        <h3 style="margin-bottom:18px;">Thêm Nghệ sĩ mới</h3>
+        <form id="addArtistForm" enctype="multipart/form-data">
+            <table style="width:100%;border-collapse:separate;border-spacing:0 10px;">
+                <tr>
+                    <td style="width:110px;text-align:right;padding-right:10px;"><label for="add_artist_name">Tên nghệ sĩ:</label></td>
+                    <td><input type="text" id="add_artist_name" name="name" required style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #888;"></td>
+                </tr>
+                <tr>
+                    <td style="text-align:right;padding-right:10px;"><label for="add_artist_image_file">Ảnh nghệ sĩ:</label></td>
+                    <td><input type="file" id="add_artist_image_file" name="image" accept="image/*"></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td style="text-align:right;">
+                        <button type="button" onclick="closeModal('addArtistModal')" style="margin-right:10px;">Hủy</button>
+                        <button type="submit" style="background:#667eea;color:#fff;border:none;border-radius:6px;padding:8px 18px;">Thêm</button>
+                    </td>
+                </tr>
+            </table>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Thêm Thể loại (dạng bảng, luôn có trong DOM) -->
+<div id="addGenreModal" class="modal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100vw; height:100vh; overflow:auto; background:rgba(0,0,0,0.5);">
+    <div style="background:#222; margin:60px auto; padding:30px 24px 18px 24px; border-radius:12px; max-width:420px; color:#fff; position:relative; box-shadow:0 8px 32px 0 rgba(31,38,135,0.37);">
+    <span onclick="closeModal('addGenreModal')" style="position:absolute;top:12px;right:18px;font-size:22px;cursor:pointer;">&times;</span>
+        <h3 style="margin-bottom:18px;">Thêm Thể loại mới</h3>
+        <form id="addGenreForm" enctype="multipart/form-data">
+            <table style="width:100%;border-collapse:separate;border-spacing:0 10px;">
+                <tr>
+                    <td style="width:110px;text-align:right;padding-right:10px;"><label for="add_genre_name">Tên thể loại:</label></td>
+                    <td><input type="text" id="add_genre_name" name="name" required style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #888;"></td>
+                </tr>
+                <tr>
+                    <td style="text-align:right;padding-right:10px;"><label for="add_genre_image_file">Ảnh thể loại:</label></td>
+                    <td><input type="file" id="add_genre_image_file" name="image" accept="image/*"></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td style="text-align:right;">
+                        <button type="button" onclick="closeModal('addGenreModal')" style="margin-right:10px;">Hủy</button>
+                        <button type="submit" style="background:#667eea;color:#fff;border:none;border-radius:6px;padding:8px 18px;">Thêm</button>
+                    </td>
+                </tr>
+            </table>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Thêm Album (luôn có trong DOM) -->
+<div id="addAlbumModal" class="modal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100vw; height:100vh; overflow:auto; background:rgba(0,0,0,0.5);">
+    <div style="background:#222; margin:60px auto; padding:30px 24px 18px 24px; border-radius:12px; max-width:400px; color:#fff; position:relative;">
+    <span onclick="closeModal('addAlbumModal')" style="position:absolute;top:12px;right:18px;font-size:22px;cursor:pointer;">&times;</span>
+        <h3 style="margin-bottom:18px;">Thêm Album mới</h3>
+        <form id="addAlbumForm" enctype="multipart/form-data">
+            <div style="margin-bottom:12px;">
+                <label for="add_album_title">Tên album:</label>
+                <input type="text" id="add_album_title" name="title" required style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #888;">
+            </div>
+            <div style="margin-bottom:12px;">
+                <label for="add_album_artist_id">Nghệ sĩ:</label>
+                <select id="add_album_artist_id" name="artist_id" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #888;">
+                    <option value="">-- Chọn nghệ sĩ --</option>
+                    {% for artist in artists %}
+                        <option value="{{ artist.id }}">{{ artist.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label for="add_album_cover_file">Ảnh bìa:</label>
+                <input type="file" id="add_album_cover_file" name="image" accept="image/*">
+            </div>
+            <div style="text-align:right;">
+                <button type="button" onclick="closeModal('addAlbumModal')" style="margin-right:10px;">Hủy</button>
+                <button type="submit" style="background:#667eea;color:#fff;border:none;border-radius:6px;padding:8px 18px;">Thêm</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+
+<!-- Modal Thêm Nghệ sĩ (dạng bảng) -->
+<div id="addArtistModal" class="modal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100vw; height:100vh; overflow:auto; background:rgba(0,0,0,0.5);">
+    <div style="background:#222; margin:60px auto; padding:30px 24px 18px 24px; border-radius:12px; max-width:420px; color:#fff; position:relative; box-shadow:0 8px 32px 0 rgba(31,38,135,0.37);">
+    <span onclick="closeModal('addArtistModal')" style="position:absolute;top:12px;right:18px;font-size:22px;cursor:pointer;">&times;</span>
+        <h3 style="margin-bottom:18px;">Thêm Nghệ sĩ mới</h3>
+        <form id="addArtistForm" enctype="multipart/form-data">
+            <table style="width:100%;border-collapse:separate;border-spacing:0 10px;">
+                <tr>
+                    <td style="width:110px;text-align:right;padding-right:10px;"><label for="add_artist_name">Tên nghệ sĩ:</label></td>
+                    <td><input type="text" id="add_artist_name" name="name" required style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #888;"></td>
+                </tr>
+                <tr>
+                    <td style="text-align:right;padding-right:10px;"><label for="add_artist_image_file">Ảnh nghệ sĩ:</label></td>
+                    <td><input type="file" id="add_artist_image_file" name="image" accept="image/*"></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td style="text-align:right;">
+                        <button type="button" onclick="closeModal('addArtistModal')" style="margin-right:10px;">Hủy</button>
+                        <button type="submit" style="background:#667eea;color:#fff;border:none;border-radius:6px;padding:8px 18px;">Thêm</button>
+                    </td>
+                </tr>
+            </table>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Thêm Thể loại (dạng bảng) -->
+<div id="addGenreModal" class="modal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100vw; height:100vh; overflow:auto; background:rgba(0,0,0,0.5);">
+    <div style="background:#222; margin:60px auto; padding:30px 24px 18px 24px; border-radius:12px; max-width:420px; color:#fff; position:relative; box-shadow:0 8px 32px 0 rgba(31,38,135,0.37);">
+    <span onclick="closeModal('addGenreModal')" style="position:absolute;top:12px;right:18px;font-size:22px;cursor:pointer;">&times;</span>
+        <h3 style="margin-bottom:18px;">Thêm Thể loại mới</h3>
+        <form id="addGenreForm" enctype="multipart/form-data">
+            <table style="width:100%;border-collapse:separate;border-spacing:0 10px;">
+                <tr>
+                    <td style="width:110px;text-align:right;padding-right:10px;"><label for="add_genre_name">Tên thể loại:</label></td>
+                    <td><input type="text" id="add_genre_name" name="name" required style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #888;"></td>
+                </tr>
+                <tr>
+                    <td style="text-align:right;padding-right:10px;"><label for="add_genre_image_file">Ảnh thể loại:</label></td>
+                    <td><input type="file" id="add_genre_image_file" name="image" accept="image/*"></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td style="text-align:right;">
+                        <button type="button" onclick="closeModal('addGenreModal')" style="margin-right:10px;">Hủy</button>
+                        <button type="submit" style="background:#667eea;color:#fff;border:none;border-radius:6px;padding:8px 18px;">Thêm</button>
+                    </td>
+                </tr>
+            </table>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Sửa Thể loại -->
+<div id="editGenreModal" class="modal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100vw; height:100vh; overflow:auto; background:rgba(0,0,0,0.5);">
+    <div style="background:#222; margin:60px auto; padding:30px 24px 18px 24px; border-radius:12px; max-width:420px; color:#fff; position:relative; box-shadow:0 8px 32px 0 rgba(31,38,135,0.37);">
+        <span onclick="closeModal('editGenreModal')" style="position:absolute;top:12px;right:18px;font-size:22px;cursor:pointer;">&times;</span>
+        <h3 style="margin-bottom:18px;">Chỉnh sửa Thể loại</h3>
+        <form id="editGenreForm" enctype="multipart/form-data">
+            <input type="hidden" id="edit_genre_id">
+            <table style="width:100%;border-collapse:separate;border-spacing:0 10px;">
+                <tr>
+                    <td style="width:110px;text-align:right;padding-right:10px;"><label for="edit_genre_name">Tên thể loại:</label></td>
+                    <td><input type="text" id="edit_genre_name" name="name" required style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #888;"></td>
+                </tr>
+                <tr>
+                    <td style="text-align:right;padding-right:10px;"><label for="edit_genre_color">Màu sắc:</label></td>
+                    <td><input type="text" id="edit_genre_color" name="color_class" placeholder="Tùy chọn" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #888;"></td>
+                </tr>
+                <tr>
+                    <td style="text-align:right;padding-right:10px;"><label for="edit_genre_image_file">Ảnh thể loại:</label></td>
+                    <td><input type="file" id="edit_genre_image_file" name="image" accept="image/*"></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td style="text-align:right;">
+                        <button type="button" onclick="closeModal('editGenreModal')" style="margin-right:10px;">Hủy</button>
+                        <button type="submit" style="background:#667eea;color:#fff;border:none;border-radius:6px;padding:8px 18px;">Cập nhật</button>
+                    </td>
+                </tr>
+            </table>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Sửa Nghệ sĩ -->
+<div id="editArtistModal" class="modal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100vw; height:100vh; overflow:auto; background:rgba(0,0,0,0.5);">
+    <div style="background:#222; margin:60px auto; padding:30px 24px 18px 24px; border-radius:12px; max-width:420px; color:#fff; position:relative; box-shadow:0 8px 32px 0 rgba(31,38,135,0.37);">
+        <span onclick="closeModal('editArtistModal')" style="position:absolute;top:12px;right:18px;font-size:22px;cursor:pointer;">&times;</span>
+        <h3 style="margin-bottom:18px;">Chỉnh sửa Nghệ sĩ</h3>
+        <form id="editArtistForm" enctype="multipart/form-data">
+            <input type="hidden" id="edit_artist_id">
+            <table style="width:100%;border-collapse:separate;border-spacing:0 10px;">
+                <tr>
+                    <td style="width:110px;text-align:right;padding-right:10px;"><label for="edit_artist_name">Tên nghệ sĩ:</label></td>
+                    <td><input type="text" id="edit_artist_name" name="name" required style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #888;"></td>
+                </tr>
+                <tr>
+                    <td style="text-align:right;padding-right:10px;"><label for="edit_artist_image_file">Ảnh nghệ sĩ:</label></td>
+                    <td><input type="file" id="edit_artist_image_file" name="image" accept="image/*"></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td style="text-align:right;">
+                        <button type="button" onclick="closeModal('editArtistModal')" style="margin-right:10px;">Hủy</button>
+                        <button type="submit" style="background:#667eea;color:#fff;border:none;border-radius:6px;padding:8px 18px;">Cập nhật</button>
+                    </td>
+                </tr>
+            </table>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Sửa Album -->
+<div id="editAlbumModal" class="modal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100vw; height:100vh; overflow:auto; background:rgba(0,0,0,0.5);">
+    <div style="background:#222; margin:60px auto; padding:30px 24px 18px 24px; border-radius:12px; max-width:400px; color:#fff; position:relative;">
+        <span onclick="closeModal('editAlbumModal')" style="position:absolute;top:12px;right:18px;font-size:22px;cursor:pointer;">&times;</span>
+        <h3 style="margin-bottom:18px;">Chỉnh sửa Album</h3>
+        <form id="editAlbumForm" enctype="multipart/form-data">
+            <input type="hidden" id="edit_album_id">
+            <div style="margin-bottom:12px;">
+                <label for="edit_album_title">Tên album:</label>
+                <input type="text" id="edit_album_title" name="title" required style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #888;">
+            </div>
+            <div style="margin-bottom:12px;">
+                <label for="edit_album_artist_id">Nghệ sĩ:</label>
+                <select id="edit_album_artist_id" name="artist_id" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #888;">
+                    <option value="">-- Chọn nghệ sĩ --</option>
+                    {% for artist in artists %}
+                        <option value="{{ artist.id }}">{{ artist.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label for="edit_album_cover_file">Ảnh bìa:</label>
+                <input type="file" id="edit_album_cover_file" name="image" accept="image/*">
+            </div>
+            <div style="text-align:right;">
+                <button type="button" onclick="closeModal('editAlbumModal')" style="margin-right:10px;">Hủy</button>
+                <button type="submit" style="background:#667eea;color:#fff;border:none;border-radius:6px;padding:8px 18px;">Cập nhật</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% block scripts_extra %}
+<script src="/static/js/manage_music.js"></script>
+<script>
+// Hàm mở modal
+function openModal(modalId) {
+    document.getElementById(modalId).style.display = 'block';
+}
+
+// Hàm đóng modal
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+</script>
+{% endblock %}

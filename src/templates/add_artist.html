@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Quản Lý Nhạc, Nghệ Sĩ, Album{% endblock %}
+{% block content %}
+<div class="manage-music-container">
+  <h2>Quản Lý Nhạc, Nghệ Sĩ, Album</h2>
+  <div class="music-actions-bar">
+    <button id="add-song-btn" class="set-role-btn">Thêm nhạc</button>
+    <button id="add-artist-btn" class="set-role-btn">Thêm nghệ sĩ</button>
+    <button id="add-album-btn" class="set-role-btn">Thêm album</button>
+  </div>
+  <div class="music-list-section">
+    <!-- Tìm kiếm thể loại realtime (autocomplete) -->
+    <div class="genre-search-bar" style="margin-bottom:18px; position:relative; max-width:340px;">
+      <label for="search-genre-input" style="font-weight:500; color:#1a237e;">Tìm kiếm thể loại:</label>
+      <input id="search-genre-input" type="text" placeholder="Tìm kiếm thể loại..." autocomplete="off" style="width:100%; margin-top:4px;" />
+      <div id="genres-search-result" style="display:none;"></div>
+    </div>
+    <h3>Danh sách nhạc</h3>
+    <!-- Tìm kiếm bài hát -->
+    <div class="song-search-bar" style="margin-bottom:14px; max-width:340px;">
+      <label for="search-song-input" style="font-weight:500; color:#1a237e;">Tìm kiếm bài hát:</label>
+      <div style="display:flex; gap:6px; margin-top:4px;">
+        <input id="search-song-input" type="text" placeholder="Nhập tên bài hát..." autocomplete="off" style="flex:1;" />
+        <button id="search-song-btn" type="button">Tìm</button>
+      </div>
+    </div>
+    <!-- Kết quả tìm kiếm bài hát sẽ hiển thị ở đây (nếu có) -->
+    <div id="songs-container"></div>
+    <table id="songs-table">
+      <thead>
+        <tr>
+          <th>STT</th>
+          <th>Tiêu đề</th>
+          <th>Nghệ sĩ</th>
+          <th>Thể loại</th>
+          <th>Album</th>
+          <th>Người đăng</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="7" class="loading-message">Đang tải dữ liệu...</td></tr>
+      </tbody>
+    </table>
+    <h3>Danh sách nghệ sĩ</h3>
+    <table id="artists-table">
+      <thead>
+        <tr>
+          <th>STT</th>
+          <th>Tên nghệ sĩ</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="3" class="loading-message">Đang tải dữ liệu...</td></tr>
+      </tbody>
+    </table>
+    <h3>Danh sách album</h3>
+    <table id="albums-table">
+      <thead>
+        <tr>
+          <th>STT</th>
+          <th>Tên album</th>
+          <th>Nghệ sĩ</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="4" class="loading-message">Đang tải dữ liệu...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts_extra %}
+<script src="{{ url_for('static', filename='js/manage_music.js') }}"></script>
+{% endblock %}

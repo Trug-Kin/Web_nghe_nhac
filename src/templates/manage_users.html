@@ -1,0 +1,353 @@
+
+{% extends "base.html" %}
+{% block title %}Quản Lý Người Dùng{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/manage_users.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="manage-users-container">
+  <div class="manage-users-header">
+    <h2>Quản Lý Người Dùng</h2>
+  </div>
+  <div class="search-users-bar" style="margin-bottom:18px;">
+    <input type="text" id="search-username-input" placeholder="Tìm theo username..." style="padding:6px 12px;width:240px;border-radius:6px;border:1px solid #444;background:#222;color:#eee;">
+  </div>
+  <div class="users-table-wrapper">
+    <table id="users-table">
+      <thead>
+        <tr>
+          <th>STT</th>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td colspan="5" class="loading-message">Đang tải dữ liệu...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+// Quản lý user cho admin
+document.addEventListener('DOMContentLoaded', async function() {
+  const table = document.getElementById('users-table').querySelector('tbody');
+  function showError(msg){
+    table.innerHTML = `<tr><td colspan='5' class='error-message'>${msg}</td></tr>`;
+  }
+  function showLoading(){
+    table.innerHTML = `<tr><td colspan='5' class='loading-message'>Đang tải dữ liệu...</td></tr>`;
+  }
+  showLoading();
+  try {
+    const token = document.cookie.split('; ').find(row => row.startsWith('access_token='));
+    const headers = {'Content-Type':'application/json'};
+    if(token) headers['Authorization'] = 'Bearer ' + token.split('=')[1];
+    const res = await fetch('/admin/api/users', {headers, credentials:'include'});
+    if(res.status === 403) {
+      showError('Bạn không có quyền truy cập trang này');
+      return;
+    }
+    if(!res.ok) {
+      showError('Lỗi kết nối server');
+      return;
+    }
+  let users = await res.json();
+    if(!Array.isArray(users)) {
+      showError('Lỗi dữ liệu từ server');
+      return;
+    }
+    if(users.length === 0) {
+      table.innerHTML = `<tr><td colspan='5' style='text-align:center;padding:40px;color:#b3b3b3;'>Chưa có người dùng nào</td></tr>`;
+      return;
+    }
+    // Sắp xếp theo role: admin -> uploader -> user
+    const roleOrder = {admin: 0, uploader: 1, user: 2};
+    function renderTable(filteredUsers) {
+      filteredUsers.sort((a, b) => {
+        // Super Admin luôn lên đầu
+        if(a.id === 1) return -1;
+        if(b.id === 1) return 1;
+        return (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99);
+      });
+      table.innerHTML = '';
+      filteredUsers.forEach((u, idx) => {
+        const tr = document.createElement('tr');
+        const stt = idx + 1;
+        if(u.id === 1) {
+          tr.innerHTML = `
+            <td>${stt}</td>
+            <td>${u.username}</td>
+            <td>${u.email}</td>
+            <td>${u.role}</td>
+            <td><span class="super-admin-badge">Super Admin</span></td>
+          `;
+        } else {
+          tr.innerHTML = `
+            <td>${stt}</td>
+            <td>${u.username}</td>
+            <td>${u.email}</td>
+            <td>
+              <select class="role-select" data-user-id="${u.id}" data-current-role="${u.role}">
+                <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
+                <option value="uploader" ${u.role==='uploader'?'selected':''}>Người đăng nhạc</option>
+                <option value="user" ${u.role==='user'?'selected':''}>Người nghe</option>
+              </select>
+            </td>
+            <td>
+              <div class="action-buttons">
+                <button class="set-role-btn" data-user-id="${u.id}">Set Role</button>
+                <button class="delete-user-btn" data-user-id="${u.id}">Xóa</button>
+              </div>
+            </td>
+          `;
+        }
+        table.appendChild(tr);
+      });
+      // Gắn lại sự kiện cho nút sau khi render
+      table.querySelectorAll('.set-role-btn').forEach(btn => {
+        btn.addEventListener('click', async function(){
+          const userId = this.getAttribute('data-user-id');
+          const select = table.querySelector(`.role-select[data-user-id="${userId}"]`);
+          const newRole = select.value;
+          const currentRole = select.getAttribute('data-current-role');
+          if(newRole === currentRole) {
+            alert('Vai trò không thay đổi!');
+            return;
+          }
+          if(!confirm(`Bạn có chắc muốn đổi vai trò thành "${newRole}"?`)) return;
+          btn.disabled = true;
+          btn.textContent = 'Đang cập nhật...';
+          try {
+            const res = await fetch(`/admin/api/users/${userId}/role`, {
+              method:'POST',
+              headers,
+              credentials:'include',
+              body: JSON.stringify({role: newRole})
+            });
+            if(res.ok) {
+              btn.textContent = '✓ Đã cập nhật';
+              btn.style.background = '#1ed760';
+              select.setAttribute('data-current-role', newRole);
+              const roleCell = this.closest('tr').querySelector('td:nth-child(4)');
+              roleCell.textContent = newRole;
+              setTimeout(() => {
+                btn.textContent = 'Set Role';
+                btn.style.background = '#1db954';
+                btn.disabled = false;
+              }, 1500);
+            } else {
+              const error = await res.json();
+              alert(error.msg || 'Lỗi khi cập nhật vai trò');
+              btn.textContent = '✗ Lỗi';
+              btn.style.background = '#ff4444';
+              setTimeout(() => {
+                btn.textContent = 'Set Role';
+                btn.style.background = '#1db954';
+                btn.disabled = false;
+              }, 1500);
+            }
+          } catch(e) {
+            alert('Lỗi kết nối server');
+            btn.textContent = '✗ Lỗi';
+            btn.style.background = '#ff4444';
+            setTimeout(() => {
+              btn.textContent = 'Set Role';
+              btn.style.background = '#1db954';
+              btn.disabled = false;
+            }, 1500);
+          }
+        });
+      });
+      table.querySelectorAll('.delete-user-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+          const userId = this.getAttribute('data-user-id');
+          if(!confirm('Bạn chắc chắn muốn xóa tài khoản ID ' + userId + ' ? Hành động này không thể hoàn tác.')) return;
+          const originalText = this.textContent;
+          this.disabled = true;
+          this.textContent = 'Đang xóa...';
+          try {
+            const res = await fetch(`/admin/api/user/${userId}`, { method: 'DELETE', headers, credentials:'include' });
+            if(res.ok) {
+              this.textContent = 'Đã xóa';
+              this.style.background = '#444';
+              setTimeout(()=>{
+                const row = this.closest('tr');
+                if(row) row.remove();
+                renumberRows();
+                // Nếu không còn user nào thì hiển thị thông báo
+                if(table.querySelectorAll('tr').length === 0) {
+                  table.innerHTML = `<tr><td colspan='5' style='text-align:center;padding:40px;color:#b3b3b3;'>Không còn người dùng nào</td></tr>`;
+                }
+              }, 600);
+            } else {
+              const data = await res.json().catch(()=>({}));
+              alert(data.msg || 'Xóa thất bại');
+              this.disabled = false;
+              this.textContent = originalText;
+            }
+          } catch(err) {
+            alert('Lỗi kết nối server');
+            this.disabled = false;
+            this.textContent = originalText;
+          }
+        });
+      });
+    }
+
+    renderTable(users);
+
+    // Tìm kiếm username
+    const searchInput = document.getElementById('search-username-input');
+    if(searchInput) {
+      searchInput.addEventListener('input', function() {
+        const keyword = this.value.trim().toLowerCase();
+        const filtered = users.filter(u => u.username.toLowerCase().includes(keyword));
+        renderTable(filtered);
+      });
+    }
+      const tr = document.createElement('tr');
+      const stt = idx + 1; // sequential number
+      if(u.id === 1) {
+        tr.innerHTML = `
+          <td>${stt}</td>
+          <td>${u.username}</td>
+          <td>${u.email}</td>
+          <td>${u.role}</td>
+          <td><span class="super-admin-badge">Super Admin</span></td>
+        `;
+      } else {
+        tr.innerHTML = `
+          <td>${stt}</td>
+          <td>${u.username}</td>
+          <td>${u.email}</td>
+          <td>
+            <select class="role-select" data-user-id="${u.id}" data-current-role="${u.role}">
+              <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
+              <option value="uploader" ${u.role==='uploader'?'selected':''}>Người đăng nhạc</option>
+              <option value="user" ${u.role==='user'?'selected':''}>Người nghe</option>
+            </select>
+          </td>
+          <td>
+            <div class="action-buttons">
+              <button class="set-role-btn" data-user-id="${u.id}">Set Role</button>
+              <button class="delete-user-btn" data-user-id="${u.id}">Xóa</button>
+            </div>
+          </td>
+        `;
+      }
+      table.appendChild(tr);
+    });
+
+    function renumberRows() {
+      const rows = table.querySelectorAll('tr');
+      rows.forEach((row, i) => {
+        const firstCell = row.querySelector('td:first-child');
+        if(firstCell) firstCell.textContent = i + 1;
+      });
+    }
+    // Sự kiện đổi role
+    table.querySelectorAll('.set-role-btn').forEach(btn => {
+      btn.addEventListener('click', async function(){
+        const userId = this.getAttribute('data-user-id');
+        const select = table.querySelector(`.role-select[data-user-id="${userId}"]`);
+        const newRole = select.value;
+        const currentRole = select.getAttribute('data-current-role');
+        if(newRole === currentRole) {
+          alert('Vai trò không thay đổi!');
+          return;
+        }
+        if(!confirm(`Bạn có chắc muốn đổi vai trò thành "${newRole}"?`)) return;
+        btn.disabled = true;
+        btn.textContent = 'Đang cập nhật...';
+        try {
+          const res = await fetch(`/admin/api/users/${userId}/role`, {
+            method:'POST',
+            headers,
+            credentials:'include',
+            body: JSON.stringify({role: newRole})
+          });
+          if(res.ok) {
+            btn.textContent = '✓ Đã cập nhật';
+            btn.style.background = '#1ed760';
+            select.setAttribute('data-current-role', newRole);
+            const roleCell = this.closest('tr').querySelector('td:nth-child(4)');
+            roleCell.textContent = newRole;
+            setTimeout(() => {
+              btn.textContent = 'Set Role';
+              btn.style.background = '#1db954';
+              btn.disabled = false;
+            }, 1500);
+          } else {
+            const error = await res.json();
+            alert(error.msg || 'Lỗi khi cập nhật vai trò');
+            btn.textContent = '✗ Lỗi';
+            btn.style.background = '#ff4444';
+            setTimeout(() => {
+              btn.textContent = 'Set Role';
+              btn.style.background = '#1db954';
+              btn.disabled = false;
+            }, 1500);
+          }
+        } catch(e) {
+          alert('Lỗi kết nối server');
+          btn.textContent = '✗ Lỗi';
+          btn.style.background = '#ff4444';
+          setTimeout(() => {
+            btn.textContent = 'Set Role';
+            btn.style.background = '#1db954';
+            btn.disabled = false;
+          }, 1500);
+        }
+      });
+    });
+
+    // Sự kiện xóa user
+    table.querySelectorAll('.delete-user-btn').forEach(btn => {
+      btn.addEventListener('click', async function() {
+        const userId = this.getAttribute('data-user-id');
+        if(!confirm('Bạn chắc chắn muốn xóa tài khoản ID ' + userId + ' ? Hành động này không thể hoàn tác.')) return;
+        const originalText = this.textContent;
+        this.disabled = true;
+        this.textContent = 'Đang xóa...';
+        try {
+          const res = await fetch(`/admin/api/user/${userId}`, { method: 'DELETE', headers, credentials:'include' });
+          if(res.ok) {
+            this.textContent = 'Đã xóa';
+            this.style.background = '#444';
+            // loại bỏ dòng sau một chút trễ để người dùng thấy phản hồi
+            setTimeout(()=>{
+              const row = this.closest('tr');
+              if(row) row.remove();
+              renumberRows();
+              if(table.querySelectorAll('tr').length === 0) {
+                table.innerHTML = `<tr><td colspan='5' style='text-align:center;padding:40px;color:#b3b3b3;'>Không còn người dùng nào</td></tr>`;
+              }
+            }, 600);
+          } else {
+            const data = await res.json().catch(()=>({}));
+            alert(data.msg || 'Xóa thất bại');
+            this.disabled = false;
+            this.textContent = originalText;
+          }
+        } catch(err) {
+          alert('Lỗi kết nối server');
+          this.disabled = false;
+          this.textContent = originalText;
+        }
+      });
+    });
+  } catch(e) {
+    console.error('Error loading users:', e);
+    showError('Lỗi kết nối server');
+  }
+});
+</script>
+{% endblock %}

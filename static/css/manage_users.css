@@ -1,0 +1,259 @@
+.manage-users-container {
+  max-width: 900px;
+  margin: 40px auto 0 auto;
+  background: #181818;
+  border-radius: 10px;
+  box-shadow: 0 2px 16px #000a;
+  padding: 32px 32px 24px 32px;
+}
+.manage-users-header h2 {
+  color: #1db954;
+  margin-bottom: 18px;
+}
+.users-table-wrapper {
+  overflow-x: auto;
+}
+#users-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #222;
+  color: #eee;
+  border-radius: 8px;
+  overflow: hidden;
+}
+#users-table th, #users-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #333;
+  text-align: left;
+}
+#users-table th {
+  background: #222;
+  color: #1db954;
+  font-weight: 600;
+}
+#users-table tr:last-child td {
+  border-bottom: none;
+}
+.action-buttons button {
+  margin-right: 8px;
+  padding: 5px 12px;
+  border-radius: 5px;
+  border: none;
+  background: #1db954;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.action-buttons button:last-child {
+  margin-right: 0;
+  background: #ff4444;
+}
+.action-buttons button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.loading-message, .error-message {
+  text-align: center;
+  color: #b3b3b3;
+  font-size: 16px;
+  padding: 32px 0;
+}
+.delete-user-btn {
+  background: #e74c3c;
+  border: none;
+  border-radius: 20px;
+  color: #fff;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: all 0.2s ease;
+}
+
+.delete-user-btn:hover {
+  background: #ff4444;
+  transform: scale(1.05);
+}
+
+.delete-user-btn:active {
+  transform: scale(0.98);
+}
+
+.delete-user-btn:disabled {
+  background: #535353;
+  cursor: not-allowed;
+  transform: scale(1);
+}
+/* Manage Users Page Styles */
+.manage-users-container {
+  padding: 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.manage-users-header {
+  margin-bottom: 30px;
+}
+
+.manage-users-header h2 {
+  color: #fff;
+  font-size: 32px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.users-table-wrapper {
+  background: #181818;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+#users-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#users-table thead {
+  background: #282828;
+}
+
+#users-table thead th {
+  padding: 16px 12px;
+  text-align: left;
+  color: #b3b3b3;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #404040;
+}
+
+#users-table tbody tr {
+  border-bottom: 1px solid #282828;
+  transition: background 0.2s ease;
+}
+
+#users-table tbody tr:hover {
+  background: #282828;
+}
+
+#users-table tbody td {
+  padding: 16px 12px;
+  color: #fff;
+  font-size: 14px;
+}
+
+#users-table tbody td:first-child {
+  color: #b3b3b3;
+  font-weight: 600;
+}
+
+.role-select {
+  background: #333;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #fff;
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-right: 8px;
+  transition: all 0.2s ease;
+}
+
+.role-select:hover {
+  background: #404040;
+  border-color: #666;
+}
+
+.role-select:focus {
+  outline: none;
+  border-color: #1db954;
+}
+
+.set-role-btn {
+  background: #1db954;
+  border: none;
+  border-radius: 20px;
+  color: #fff;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.set-role-btn:hover {
+  background: #1ed760;
+  transform: scale(1.05);
+}
+
+.set-role-btn:active {
+  transform: scale(0.98);
+}
+
+.set-role-btn:disabled {
+  background: #535353;
+  cursor: not-allowed;
+  transform: scale(1);
+}
+
+.super-admin-badge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-block;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+.error-message {
+  color: #ff4444;
+  text-align: center;
+  padding: 40px;
+  font-size: 16px;
+}
+
+.loading-message {
+  color: #b3b3b3;
+  text-align: center;
+  padding: 40px;
+  font-size: 16px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .manage-users-container {
+    padding: 20px;
+  }
+
+  .manage-users-header h2 {
+    font-size: 24px;
+  }
+
+  #users-table thead th {
+    padding: 12px 8px;
+    font-size: 11px;
+  }
+
+  #users-table tbody td {
+    padding: 12px 8px;
+    font-size: 13px;
+  }
+
+  .role-select {
+    padding: 6px 10px;
+    font-size: 13px;
+    margin-right: 4px;
+  }
+
+  .set-role-btn {
+    padding: 6px 16px;
+    font-size: 13px;
+  }
+}

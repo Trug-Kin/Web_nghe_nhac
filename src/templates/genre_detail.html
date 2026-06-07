@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Thể loại{% endblock %}
+{% block content %}
+<input type="hidden" id="entity-id" value="{{ genre_id }}">
+<input type="hidden" id="entity-type" value="genre">
+
+<div class="entity-page">
+    <header class="entity-header" id="entity-header">
+        <div class="entity-info">
+            <img id="entity-image" src="" alt="Genre Cover" class="entity-image" style="border-radius: 8px;">
+            <h1 id="entity-name">Đang tải...</h1>
+        </div>
+    </header>
+
+    <div class="song-list-container">
+        <h2>Bài hát thuộc thể loại</h2>
+        <table class="song-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Tiêu Đề</th>
+                    <th>Nghệ Sĩ</th>
+                    <th>Lượt nghe</th>
+                    <th>Thích</th>
+                </tr>
+            </thead>
+            <tbody id="song-list-body"></tbody>
+        </table>
+    </div>
+</div>
+<script>
+// Load thông tin thể loại và bài hát
+(function loadGenreData() {
+    const entityId = document.getElementById('entity-id')?.value;
+    if (!entityId) {
+        console.error('Không tìm thấy genre ID');
+        return;
+    }
+
+    // Load thông tin thể loại và bài hát từ API
+    fetch(`/api/genre/${entityId}`)
+        .then(res => {
+            if (!res.ok) throw new Error('Lỗi tải thông tin thể loại');
+            return res.json();
+        })
+        .then(data => {
+            console.log('Genre data:', data);
+            // Cập nhật tên và ảnh thể loại
+            const entityName = document.getElementById('entity-name');
+            const entityImage = document.getElementById('entity-image');
+            
+            if (entityName) entityName.textContent = data.name || 'Thể loại';
+            if (entityImage) {
+                const imagePath = data.image_path || 'images/default_genre.jpg';
+                entityImage.src = imagePath.startsWith('/static/') ? imagePath : `/static/${imagePath}`;
+                entityImage.alt = data.name || 'Thể loại';
+            }
+
+            // Load danh sách bài hát
+            const songListBody = document.getElementById('song-list-body');
+            if (!songListBody) return;
+
+            if (!data.songs || data.songs.length === 0) {
+                songListBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:#888;">Thể loại chưa có bài hát nào</td></tr>';
+                return;
+            }
+
+            // Render bài hát
+            songListBody.innerHTML = data.songs.map((song, index) => {
+                const mp3Path = song.mp3_path ? (song.mp3_path.startsWith('/static/') ? song.mp3_path : `/static/${song.mp3_path}`) : '';
+                const songImage = song.image_path ? (song.image_path.startsWith('/static/') ? song.image_path : `/static/${song.image_path}`) : (song.album_image_path ? (song.album_image_path.startsWith('/static/') ? song.album_image_path : `/static/${song.album_image_path}`) : '/static/images/default.jpg');
+                
+                return `
+                <tr class="song-row" 
+                    data-mp3-path="${mp3Path}"
+                    data-title="${song.title || ''}"
+                    data-artist-name="${song.artist_name || ''}"
+                    data-album-image="${songImage}"
+                    data-song-id="${song.id}">
+                    <td>${index + 1}</td>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <img src="${songImage}" 
+                                 alt="${song.title}" 
+                                 style="width:40px;height:40px;object-fit:cover;border-radius:4px;">
+                            <span class="song-title-link">${song.title}</span>
+                        </div>
+                    </td>
+                    <td>${song.artist_name || 'Unknown'}</td>
+                    <td>${song.listen_count || 0}</td>
+                    <td>
+                        <button class="like-button" data-song-id="${song.id}">
+                            <i class="fa${song.is_liked ? 's' : 'r'} fa-heart like-icon"></i>
+                        </button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+
+            // Attach event listeners để có thể click phát nhạc
+            attachSongClickListeners();
+        })
+        .catch(err => {
+            console.error('Lỗi:', err);
+            document.getElementById('entity-name').textContent = 'Lỗi tải dữ liệu';
+        });
+})();
+
+// Hàm attach listeners cho các row bài hát
+function attachSongClickListeners() {
+    const rows = document.querySelectorAll('.song-row');
+    rows.forEach(row => {
+        row.addEventListener('click', function(e) {
+            if (e.target.closest('.like-button')) return;
+            
+            const mp3Path = this.getAttribute('data-mp3-path');
+            const title = this.getAttribute('data-title');
+            const artistName = this.getAttribute('data-artist-name');
+            const albumImage = this.getAttribute('data-album-image');
+            const songId = this.getAttribute('data-song-id');
+            
+            if (mp3Path && window.loadSong) {
+                window.loadSong(mp3Path, title, artistName, albumImage, songId);
+            }
+        });
+    });
+
+    // Like buttons
+    const likeButtons = document.querySelectorAll('.like-button');
+    likeButtons.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const songId = this.getAttribute('data-song-id');
+            if (window.toggleLike) {
+                window.toggleLike(songId, this);
+            }
+        });
+    });
+}
+</script>
+{% endblock %}

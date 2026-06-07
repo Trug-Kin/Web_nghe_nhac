@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sửa Bài Hát</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        input[type="text"],
+        input[type="file"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        select[multiple] {
+            height: 150px;
+        }
+
+        .current-info {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .current-image {
+            max-width: 200px;
+            max-height: 200px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .artist-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .artist-tag {
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-save {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-save:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-cancel {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-cancel:hover {
+            background: #d0d0d0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #c33;
+        }
+
+        .success {
+            background: #efe;
+            color: #3c3;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3c3;
+        }
+
+        .help-text {
+            font-size: 13px;
+            color: #888;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✏️ Sửa Thông Tin Bài Hát</h1>
+        
+        <div id="loading" class="loading">Đang tải thông tin bài hát...</div>
+        <div id="error" class="error" style="display: none;"></div>
+        <div id="success" class="success" style="display: none;"></div>
+
+        <form id="editForm" style="display: none;">
+            <div class="form-group">
+                <label>Tên bài hát</label>
+                <input type="text" id="title" required>
+            </div>
+
+            <div class="form-group">
+                <label>Ảnh bài hát</label>
+                <div class="current-info" id="currentImageInfo"></div>
+                <img id="currentImage" class="current-image" style="display: none;">
+                <input type="file" id="image" accept="image/*">
+                <div class="help-text">Chọn file ảnh mới nếu muốn thay đổi</div>
+            </div>
+
+            <div class="form-group">
+                <label>File MP3</label>
+                <div class="current-info" id="currentMp3Info"></div>
+                <input type="file" id="mp3" accept="audio/mp3,audio/mpeg">
+                <div class="help-text">Chọn file MP3 mới nếu muốn thay đổi</div>
+            </div>
+
+            <div class="form-group">
+                <label>Nghệ sĩ hiện tại</label>
+                <div class="artist-tags" id="currentArtists"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Chọn nghệ sĩ (Ctrl+Click để chọn nhiều)</label>
+                <select id="artists" multiple>
+                    <!-- Sẽ được load từ API -->
+                </select>
+                <div class="help-text">Giữ Ctrl và click để chọn nhiều nghệ sĩ</div>
+            </div>
+
+            <div class="form-group">
+                <label>Album</label>
+                <select id="album">
+                    <option value="">-- Không chọn --</option>
+                    <!-- Sẽ được load từ API -->
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Thể loại</label>
+                <select id="genre">
+                    <option value="">-- Không chọn --</option>
+                    <!-- Sẽ được load từ API -->
+                </select>
+            </div>
+
+            <div class="button-group">
+                <button type="submit" class="btn-save">💾 Lưu thay đổi</button>
+                <button type="button" class="btn-cancel" onclick="goBack()">❌ Hủy</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const songId = new URLSearchParams(window.location.search).get('id');
+        let songData = null;
+
+        // Load dữ liệu khi trang load
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (!songId) {
+                showError('Không tìm thấy ID bài hát');
+                return;
+            }
+
+            await Promise.all([
+                loadSongData(),
+                loadArtists(),
+                loadAlbums(),
+                loadGenres()
+            ]);
+        });
+
+        // Load thông tin bài hát
+        async function loadSongData() {
+            try {
+                const response = await fetch(`/admin/api/song/${songId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Không thể tải thông tin bài hát');
+                }
+
+                songData = await response.json();
+                populateForm(songData);
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('editForm').style.display = 'block';
+            } catch (error) {
+                showError(error.message);
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // Điền thông tin vào form
+        function populateForm(data) {
+            document.getElementById('title').value = data.title;
+            
+            // Hiển thị ảnh hiện tại
+            if (data.image_path) {
+                document.getElementById('currentImageInfo').textContent = `Ảnh hiện tại: ${data.image_path}`;
+                document.getElementById('currentImage').src = `/DoAnCoSo/${data.image_path}`;
+                document.getElementById('currentImage').style.display = 'block';
+            } else {
+                document.getElementById('currentImageInfo').textContent = 'Chưa có ảnh';
+            }
+
+            // Hiển thị MP3 hiện tại
+            document.getElementById('currentMp3Info').textContent = `File MP3: ${data.mp3_path}`;
+
+            // Hiển thị nghệ sĩ hiện tại
+            const artistTags = document.getElementById('currentArtists');
+            artistTags.innerHTML = '';
+            if (data.artists && data.artists.length > 0) {
+                data.artists.forEach(artist => {
+                    const tag = document.createElement('span');
+                    tag.className = 'artist-tag';
+                    tag.textContent = artist.name;
+                    artistTags.appendChild(tag);
+                });
+            } else {
+                artistTags.innerHTML = '<span class="help-text">Chưa có nghệ sĩ</span>';
+            }
+
+            // Set album và genre
+            if (data.album_id) {
+                setTimeout(() => {
+                    document.getElementById('album').value = data.album_id;
+                }, 100);
+            }
+            if (data.genre_id) {
+                setTimeout(() => {
+                    document.getElementById('genre').value = data.genre_id;
+                }, 100);
+            }
+        }
+
+        // Load danh sách nghệ sĩ
+        async function loadArtists() {
+            try {
+                const response = await fetch('/api/artists');
+                const artists = await response.json();
+                
+                const select = document.getElementById('artists');
+                artists.forEach(artist => {
+                    const option = document.createElement('option');
+                    option.value = artist.id;
+                    option.textContent = artist.name;
+                    
+                    // Chọn nghệ sĩ hiện tại
+                    if (songData && songData.artists) {
+                        const isSelected = songData.artists.some(a => a.id === artist.id);
+                        if (isSelected) {
+                            option.selected = true;
+                        }
+                    }
+                    
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Lỗi load nghệ sĩ:', error);
+            }
+        }
+
+        // Load danh sách albums
+        async function loadAlbums() {
+            try {
+                const response = await fetch('/api/albums');
+                const albums = await response.json();
+                
+                const select = document.getElementById('album');
+                albums.forEach(album => {
+                    const option = document.createElement('option');
+                    option.value = album.id;
+                    option.textContent = album.title;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Lỗi load albums:', error);
+            }
+        }
+
+        // Load danh sách thể loại
+        async function loadGenres() {
+            try {
+                const response = await fetch('/api/genres');
+                const genres = await response.json();
+                
+                const select = document.getElementById('genre');
+                genres.forEach(genre => {
+                    const option = document.createElement('option');
+                    option.value = genre.id;
+                    option.textContent = genre.name;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Lỗi load thể loại:', error);
+            }
+        }
+
+        // Submit form
+        document.getElementById('editForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData();
+            formData.append('title', document.getElementById('title').value);
+
+            // Thêm file ảnh nếu có chọn
+            const imageFile = document.getElementById('image').files[0];
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
+
+            // Thêm file MP3 nếu có chọn
+            const mp3File = document.getElementById('mp3').files[0];
+            if (mp3File) {
+                formData.append('mp3', mp3File);
+            }
+
+            // Thêm nghệ sĩ đã chọn
+            const selectedArtists = Array.from(document.getElementById('artists').selectedOptions)
+                .map(option => option.value);
+            if (selectedArtists.length > 0) {
+                formData.append('artist_ids', selectedArtists.join(','));
+            }
+
+            // Thêm album
+            const albumId = document.getElementById('album').value;
+            if (albumId) {
+                formData.append('album_id', albumId);
+            }
+
+            // Thêm thể loại
+            const genreId = document.getElementById('genre').value;
+            if (genreId) {
+                formData.append('genre_id', genreId);
+            }
+
+            try {
+                const response = await fetch(`/admin/api/song/${songId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    },
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showSuccess('✅ ' + result.msg);
+                    setTimeout(() => {
+                        window.location.href = '/admin';
+                    }, 1500);
+                } else {
+                    showError(result.msg || 'Có lỗi xảy ra');
+                }
+            } catch (error) {
+                showError('Lỗi kết nối: ' + error.message);
+            }
+        });
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('success');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+    </script>
+</body>
+</html>

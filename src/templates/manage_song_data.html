@@ -1,0 +1,167 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản lý bài hát</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <h2>Quản lý bài hát</h2>
+    <button onclick="openAddSongModal()">Thêm bài hát</button>
+    <div id="songs-container"></div>
+
+    <!-- Modal thêm/sửa bài hát -->
+    <div id="song-modal" style="display:none;">
+        <form id="song-form" onsubmit="submitSongForm(event)">
+            <input type="hidden" id="song_id">
+            <label>Tiêu đề bài hát:</label>
+            <input type="text" id="song_title" required><br>
+            <label>Album:</label>
+            <select id="song_album"></select><br>
+            <label>Thể loại:</label>
+            <select id="song_genre"></select><br>
+            <label>Nghệ sĩ (chọn nhiều):</label>
+            <select id="song_artists" multiple></select><br>
+            <label>Ảnh bài hát:</label>
+            <input type="text" id="song_image_path"><br>
+            <input type="file" id="song_image_file" accept="image/*"><br>
+            <div id="song-image-preview"></div>
+            <button type="submit">Lưu</button>
+            <button type="button" onclick="closeSongModal()">Đóng</button>
+        </form>
+    </div>
+
+    <script src="/static/js/manage_song.js"></script>
+    <script>
+    // Render danh sách bài hát
+    async function renderSongs() {
+        const songs = await fetchSongs();
+        const container = document.getElementById('songs-container');
+        container.innerHTML = '';
+        songs.forEach(song => {
+            const div = document.createElement('div');
+            div.className = 'item-card';
+            const imgPath = song.image_path ? `/static/${song.image_path}` : '/static/images/default_song.png';
+            div.innerHTML = `<img src="${imgPath}" style="max-width:60px;max-height:60px;border-radius:8px;vertical-align:middle;"> <b>${song.title}</b> | Album: ${song.album_id} | Thể loại: ${song.genre_id} | Nghệ sĩ: ${song.artists.join(', ')}
+                <button onclick="openEditSongModal(${song.id})">Sửa</button>
+                <button onclick="deleteSong(${song.id})">Xóa</button>`;
+            container.appendChild(div);
+        });
+    }
+    renderSongs();
+
+    // Modal logic
+    function openAddSongModal() {
+        document.getElementById('song_id').value = '';
+        document.getElementById('song_title').value = '';
+        document.getElementById('song_album').value = '';
+        document.getElementById('song_genre').value = '';
+        document.getElementById('song_artists').value = '';
+        document.getElementById('song_image_path').value = '';
+        document.getElementById('song-image-preview').innerHTML = '<p style="color:#888;">Chưa có ảnh</p>';
+        document.getElementById('song-modal').style.display = 'block';
+        // TODO: load options for album, genre, artists
+    }
+    function closeSongModal() {
+        document.getElementById('song-modal').style.display = 'none';
+    }
+    async function openEditSongModal(id) {
+        const token = localStorage.getItem('access_token');
+        const res = await fetch(`/admin/api/song/${id}`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) return alert('Không lấy được thông tin bài hát');
+        const song = await res.json();
+        document.getElementById('song_id').value = song.id;
+        document.getElementById('song_title').value = song.title;
+        document.getElementById('song_album').value = song.album_id;
+        document.getElementById('song_genre').value = song.genre_id;
+        document.getElementById('song_artists').value = song.artists;
+        document.getElementById('song_image_path').value = song.image_path || '';
+        const preview = document.getElementById('song-image-preview');
+        if (song.image_path) {
+            preview.innerHTML = `<img src="/static/${song.image_path}" style="max-width:120px;max-height:120px;border-radius:8px;">`;
+        } else {
+            preview.innerHTML = '<p style="color:#888;">Chưa có ảnh</p>';
+        }
+        document.getElementById('song-modal').style.display = 'block';
+        // TODO: load options for album, genre, artists
+    }
+    async function submitSongForm(event) {
+        event.preventDefault();
+        const isEdit = !!document.getElementById('song_id').value;
+        const id = document.getElementById('song_id').value;
+        const title = document.getElementById('song_title').value;
+        const album_id = document.getElementById('song_album').value;
+        const genre_id = document.getElementById('song_genre').value;
+        const artists = Array.from(document.getElementById('song_artists').selectedOptions).map(opt => opt.value);
+        const image_path = document.getElementById('song_image_path').value;
+        await submitSongForm(isEdit, id, title, album_id, genre_id, artists, image_path);
+        closeSongModal();
+        renderSongs();
+    }
+
+    function updateSongImagePreview() {
+        const path = document.getElementById('song_image_path').value;
+        const preview = document.getElementById('song-image-preview');
+        if (path) {
+            preview.innerHTML = `<img src="/static/${path}" style="max-width:120px;max-height:120px;border-radius:8px;">`;
+        } else {
+            preview.innerHTML = '<p style="color:#888;">Chưa có ảnh</p>';
+        }
+    }
+    document.getElementById('song_image_path').addEventListener('input', updateSongImagePreview);
+    // Khi mở modal sửa, hiển thị ảnh preview
+    async function openEditSongModal(id) {
+        const token = localStorage.getItem('access_token');
+        const res = await fetch(`/admin/api/song/${id}`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) return alert('Không lấy được thông tin bài hát');
+        const song = await res.json();
+        document.getElementById('song_id').value = song.id;
+        document.getElementById('song_title').value = song.title;
+        document.getElementById('song_album').value = song.album_id;
+        document.getElementById('song_genre').value = song.genre_id;
+        document.getElementById('song_artists').value = song.artists;
+        document.getElementById('song_image_path').value = song.image_path || '';
+        updateSongImagePreview();
+        document.getElementById('song-modal').style.display = 'block';
+        // TODO: load options for album, genre, artists
+    }
+    // Khi mở modal thêm, reset preview
+    async function openAddSongModal() {
+        document.getElementById('song_id').value = '';
+        document.getElementById('song_title').value = '';
+        document.getElementById('song_album').value = '';
+        document.getElementById('song_genre').value = '';
+        document.getElementById('song_artists').value = '';
+        document.getElementById('song_image_path').value = '';
+        document.getElementById('song-image-preview').innerHTML = '<p style="color:#888;">Chưa có ảnh</p>';
+        document.getElementById('song-modal').style.display = 'block';
+        // TODO: load options for album, genre, artists
+    }
+
+    document.getElementById('song_image_file').addEventListener('change', async function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('image', file);
+        const token = localStorage.getItem('access_token');
+        const res = await fetch('/admin/api/upload/song-image', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token },
+            body: formData
+        });
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById('song_image_path').value = data.image_path;
+            updateSongImagePreview();
+        } else {
+            alert('Lỗi upload ảnh');
+        }
+    });
+    </script>
+</body>
+</html>

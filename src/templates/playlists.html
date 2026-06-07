@@ -1,0 +1,617 @@
+{% extends "base.html" %}
+{% block title %}Playlist của tôi{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(180deg, rgba(83,83,83,0.5) 0%, #121212 300px);padding:32px;min-height:100vh;">
+    <!-- Header -->
+    <div style="margin-bottom:32px;">
+        <h1 style="font-size:48px;font-weight:900;margin:0 0 16px 0;color:#fff;">Playlist của tôi</h1>
+        <p style="color:#b3b3b3;font-size:14px;margin:0;">Quản lý và khám phá các playlist của bạn</p>
+    </div>
+
+    <!-- Search and Actions Bar -->
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;flex-wrap:wrap;">
+        <div style="position:relative;flex:1;min-width:280px;max-width:400px;">
+            <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#b3b3b3;font-size:14px;"></i>
+            <input id="playlist-search" type="text" placeholder="Tìm playlist..." style="width:100%;padding:12px 12px 12px 40px;background:#242424;border:none;border-radius:4px;color:#fff;font-size:14px;outline:none;transition:background 0.3s;" onfocus="this.style.background='#2a2a2a'" onblur="this.style.background='#242424'">
+        </div>
+        <button id="create-new-playlist-btn" style="padding:12px 24px;background:#667eea;border:none;border-radius:500px;color:#fff;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.3s;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+            <i class="fas fa-plus"></i>
+            <span>Tạo playlist mới</span>
+        </button>
+        <button id="reload-playlists-btn" style="padding:12px 24px;background:#242424;border:none;border-radius:500px;color:#fff;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.3s;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+            <i class="fas fa-sync-alt"></i>
+            <span>Làm mới</span>
+        </button>
+    </div>
+
+    <!-- Status Message -->
+    <p id="playlists-status" style="color:#b3b3b3;font-size:13px;margin:0 0 16px 0;min-height:20px;"></p>
+
+    <!-- Playlists Grid -->
+    <div id="playlists-container">
+        <div id="playlists-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:24px;">
+            <!-- Server-rendered playlists -->
+            {% if playlists and playlists|length > 0 %}
+                {% for p in playlists %}
+                <div class="playlist-card" data-id="{{ p.id }}" data-playlist-name="{{ p.name }}" data-is-public="{{ p.is_public|default(0) }}" style="background:#181818;border-radius:8px;padding:16px;transition:all 0.3s;cursor:pointer;position:relative;overflow:hidden;" onmouseenter="this.style.background='#282828'" onmouseleave="this.style.background='#181818'">
+                    <a href="{{ url_for('music.playlist_page', id=p.id) }}" style="text-decoration:none;color:inherit;">
+                        <div style="position:relative;margin-bottom:16px;">
+                            <img src="{{ url_for('static', filename=p.image_path if p.image_path else 'images/playlist_image.png') }}" alt="{{ p.name }}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;box-shadow:0 8px 24px rgba(0,0,0,.5);">
+                            {% if p.is_public %}
+                            <div style="position:absolute;top:8px;left:8px;background:rgba(29,185,84,0.9);padding:4px 8px;border-radius:4px;display:flex;align-items:center;gap:4px;">
+                                <i class="fas fa-globe" style="font-size:10px;color:#fff;"></i>
+                                <span style="font-size:10px;color:#fff;font-weight:700;">Công khai</span>
+                            </div>
+                            {% else %}
+                            <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.7);padding:4px 8px;border-radius:4px;display:flex;align-items:center;gap:4px;">
+                                <i class="fas fa-lock" style="font-size:10px;color:#b3b3b3;"></i>
+                                <span style="font-size:10px;color:#b3b3b3;font-weight:700;">Riêng tư</span>
+                            </div>
+                            {% endif %}
+                            <div style="position:absolute;right:8px;bottom:8px;width:48px;height:48px;background:#667eea;border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transform:translateY(8px);transition:all 0.3s;box-shadow:0 8px 8px rgba(0,0,0,.3);" class="play-btn">
+                                <i class="fas fa-play" style="color:#000;font-size:18px;margin-left:2px;"></i>
+                            </div>
+                        </div>
+                        <h3 style="font-size:16px;font-weight:700;color:#fff;margin:0 0 8px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ p.name }}</h3>
+                        <p style="font-size:14px;color:#b3b3b3;margin:0;">{{ p.songs.count() }} bài hát</p>
+                    </a>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        
+        <!-- Dynamic playlists container -->
+        <div id="playlists-dynamic" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:24px;margin-top:24px;"></div>
+        
+        <!-- Empty state -->
+        <div id="empty-state" style="display:none;text-align:center;padding:60px 20px;color:#b3b3b3;">
+            <i class="fas fa-music" style="font-size:64px;margin-bottom:24px;opacity:0.5;"></i>
+            <h3 style="font-size:24px;font-weight:700;margin:0 0 8px 0;">Chưa có playlist nào</h3>
+            <p style="font-size:14px;margin:0;">Tạo playlist đầu tiên của bạn để bắt đầu!</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Tạo Playlist Mới -->
+<div id="createPlaylistModal" class="modal" style="display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:rgba(0,0,0,0.6);">
+    <div class="modal-content" style="background:#282828;margin:10% auto;padding:32px;border-radius:12px;width:90%;max-width:500px;box-shadow:0 4px 24px rgba(0,0,0,0.5);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+            <h2 style="color:#fff;font-size:28px;font-weight:700;margin:0;">Tạo Playlist Mới</h2>
+            <button class="close-btn" style="background:transparent;border:none;color:#b3b3b3;font-size:32px;cursor:pointer;line-height:1;padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#b3b3b3'">&times;</button>
+        </div>
+        <form id="playlistCreationForm">
+            <div class="form-group" style="margin-bottom:20px;">
+                <label for="newPlaylistName" style="display:block;color:#fff;font-size:14px;font-weight:700;margin-bottom:8px;">Tên Playlist:</label>
+                <input type="text" id="newPlaylistName" required maxlength="100" style="width:100%;padding:12px;background:#121212;border:1px solid #404040;border-radius:4px;color:#fff;font-size:14px;outline:none;transition:border-color 0.3s;" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#404040'">
+            </div>
+            <div class="form-group" style="margin-bottom:24px;">
+                <label for="newPlaylistDescription" style="display:block;color:#fff;font-size:14px;font-weight:700;margin-bottom:8px;">Mô tả (tùy chỏn):</label>
+                <textarea id="newPlaylistDescription" maxlength="500" rows="4" style="width:100%;padding:12px;background:#121212;border:1px solid #404040;border-radius:4px;color:#fff;font-size:14px;outline:none;resize:vertical;transition:border-color 0.3s;" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#404040'"></textarea>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;">
+                <button type="submit" id="submitCreatePlaylistBtn" style="flex:1;padding:12px 24px;background:#667eea;border:none;border-radius:500px;color:#fff;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.3s;" onmouseover="this.style.background='#764ba2';this.style.transform='scale(1.04)'" onmouseout="this.style.background='#667eea';this.style.transform='scale(1)'">Tạo Playlist</button>
+                <button type="button" class="cancel-btn" style="padding:12px 24px;background:transparent;border:1px solid #535353;border-radius:500px;color:#fff;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.3s;" onmouseover="this.style.borderColor='#fff'" onmouseout="this.style.borderColor='#535353'">Hủy</button>
+            </div>
+            <p id="playlistCreationMessage" class="message" style="margin-top:16px;font-size:14px;text-align:center;"></p>
+        </form>
+    </div>
+</div>
+
+<!-- Context Menu cho Playlist -->
+<div id="playlist-context-menu" style="display:none;position:fixed;z-index:2000;background:#282828;border:1px solid #404040;border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.5);min-width:200px;">
+    <div class="context-menu-item" id="context-toggle-public" style="padding:12px 16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:12px;transition:background 0.2s;" onmouseover="this.style.background='#3e3e3e'" onmouseout="this.style.background='transparent'">
+        <i class="fas fa-globe" style="width:16px;color:#667eea;"></i>
+        <span id="context-public-text">Công khai</span>
+    </div>
+    <div style="height:1px;background:#404040;margin:4px 0;"></div>
+    <div class="context-menu-item" id="context-edit-playlist" style="padding:12px 16px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:12px;transition:background 0.2s;" onmouseover="this.style.background='#3e3e3e'" onmouseout="this.style.background='transparent'">
+        <i class="fas fa-edit" style="width:16px;color:#667eea;"></i>
+        <span>Sửa tên</span>
+    </div>
+    <div style="height:1px;background:#404040;margin:4px 0;"></div>
+    <div class="context-menu-item" id="context-delete-playlist" style="padding:12px 16px;color:#e22134;cursor:pointer;display:flex;align-items:center;gap:12px;transition:background 0.2s;" onmouseover="this.style.background='#3e3e3e'" onmouseout="this.style.background='transparent'">
+        <i class="fas fa-trash" style="width:16px;"></i>
+        <span>Xóa playlist</span>
+    </div>
+</div>
+
+<!-- Modal Sửa Tên Playlist -->
+<div id="editPlaylistModal" class="modal" style="display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:rgba(0,0,0,0.6);">
+    <div class="modal-content" style="background:#282828;margin:10% auto;padding:32px;border-radius:12px;width:90%;max-width:500px;box-shadow:0 4px 24px rgba(0,0,0,0.5);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+            <h2 style="color:#fff;font-size:28px;font-weight:700;margin:0;">Sửa Tên Playlist</h2>
+            <button class="close-edit-btn" style="background:transparent;border:none;color:#b3b3b3;font-size:32px;cursor:pointer;line-height:1;padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#b3b3b3'">&times;</button>
+        </div>
+        <form id="editPlaylistForm">
+            <input type="hidden" id="editPlaylistId">
+            <div class="form-group" style="margin-bottom:20px;">
+                <label for="editPlaylistName" style="display:block;color:#fff;font-size:14px;font-weight:700;margin-bottom:8px;">Tên Playlist:</label>
+                <input type="text" id="editPlaylistName" required maxlength="100" style="width:100%;padding:12px;background:#121212;border:1px solid #404040;border-radius:4px;color:#fff;font-size:14px;outline:none;transition:border-color 0.3s;" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#404040'">
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;">
+                <button type="submit" id="submitEditPlaylistBtn" style="flex:1;padding:12px 24px;background:#667eea;border:none;border-radius:500px;color:#fff;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.3s;" onmouseover="this.style.background='#764ba2';this.style.transform='scale(1.04)'" onmouseout="this.style.background='#667eea';this.style.transform='scale(1)'">Lưu</button>
+                <button type="button" class="cancel-edit-btn" style="padding:12px 24px;background:transparent;border:1px solid #535353;border-radius:500px;color:#fff;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.3s;" onmouseover="this.style.borderColor='#fff'" onmouseout="this.style.borderColor='#535353'">Hủy</button>
+            </div>
+            <p id="editPlaylistMessage" class="message" style="margin-top:16px;font-size:14px;text-align:center;"></p>
+        </form>
+    </div>
+</div>
+
+<style>
+.playlist-card:hover .play-btn {
+    opacity: 1;
+    transform: translateY(0);
+}
+#create-new-playlist-btn:hover {
+    background: #764ba2;
+    transform: scale(1.04);
+}
+#reload-playlists-btn:hover {
+    background: #2a2a2a;
+    transform: scale(1.04);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const statusEl = document.getElementById('playlists-status');
+  const dynContainer = document.getElementById('playlists-dynamic');
+  const gridContainer = document.getElementById('playlists-grid');
+  const emptyState = document.getElementById('empty-state');
+  const reloadBtn = document.getElementById('reload-playlists-btn');
+  
+  // Modal elements
+  const createPlaylistBtn = document.getElementById('create-new-playlist-btn');
+  const modal = document.getElementById('createPlaylistModal');
+  const closeBtns = document.querySelectorAll('#createPlaylistModal .close-btn, #createPlaylistModal .cancel-btn');
+  const playlistCreationForm = document.getElementById('playlistCreationForm');
+  const messageElement = document.getElementById('playlistCreationMessage');
+  
+  // Open modal
+  if (createPlaylistBtn) {
+    createPlaylistBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      modal.style.display = "block";
+      messageElement.innerText = "";
+      playlistCreationForm.reset();
+    });
+  }
+  
+  // Close modal
+  closeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      modal.style.display = "none";
+    });
+  });
+  
+  // Close modal when clicking outside
+  window.addEventListener('click', (event) => {
+    if (event.target === modal) {
+      modal.style.display = "none";
+    }
+  });
+  
+  // Handle form submission
+  if (playlistCreationForm) {
+    playlistCreationForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const name = document.getElementById('newPlaylistName').value.trim();
+      const description = document.getElementById('newPlaylistDescription').value.trim();
+      const submitBtn = document.getElementById('submitCreatePlaylistBtn');
+      
+      if (!name) {
+        messageElement.innerText = "Tên playlist không Đ‘ưỏ£c Đ‘ỏƒ trỏ‘ng.";
+        messageElement.style.color = "#e22134";
+        return;
+      }
+      
+      submitBtn.disabled = true;
+      messageElement.innerText = "Đang tạo...";
+      messageElement.style.color = "#b3b3b3";
+      
+      try {
+        const headers = { "Content-Type": "application/json" };
+        const token = localStorage.getItem('access_token');
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        
+        const res = await fetch("/api/playlists", { 
+          method: "POST",
+          headers,
+          body: JSON.stringify({ name, description }),
+          credentials: "include"
+        });
+        
+        const data = await res.json().catch(() => ({}));
+        
+        if (res.ok) {
+          messageElement.innerText = `Playlist "${data.name}" đã được tạo thành công!`;
+          messageElement.style.color = "#667eea";
+          playlistCreationForm.reset();
+          
+          setTimeout(() => {
+            modal.style.display = "none";
+            loadPlaylists(); // Reload playlists to show new one
+          }, 1000);
+        } else if (res.status === 401) {
+          messageElement.innerText = "Phiên Đ‘Đƒng nhập hết hạn. Vui lòng Đ‘Đƒng nhập lại.";
+          messageElement.style.color = "#e22134";
+        } else {
+          messageElement.innerText = data.message || "Lỗi không xác Đ‘ỏ‹nh khi tạo playlist.";
+          messageElement.style.color = "#e22134";
+        }
+      } catch (err) {
+        console.error("Lỗi kết nối server:", err);
+        messageElement.innerText = "Không thể kết nối đến máy chủ API.";
+        messageElement.style.color = "#e22134";
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  }
+  
+  // === Edit Playlist Modal ===
+  const editModal = document.getElementById('editPlaylistModal');
+  const editCloseBtns = document.querySelectorAll('#editPlaylistModal .close-edit-btn, #editPlaylistModal .cancel-edit-btn');
+  const editForm = document.getElementById('editPlaylistForm');
+  const editPlaylistIdInput = document.getElementById('editPlaylistId');
+  const editPlaylistNameInput = document.getElementById('editPlaylistName');
+  const editMessageElement = document.getElementById('editPlaylistMessage');
+  
+  // Close edit modal
+  editCloseBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      editModal.style.display = "none";
+    });
+  });
+  
+  // Close edit modal when clicking outside
+  window.addEventListener('click', (event) => {
+    if (event.target === editModal) {
+      editModal.style.display = "none";
+    }
+  });
+  
+  // Handle edit form submission
+  if (editForm) {
+    editForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const playlistId = editPlaylistIdInput.value;
+      const name = editPlaylistNameInput.value.trim();
+      const submitBtn = document.getElementById('submitEditPlaylistBtn');
+      
+      if (!name) {
+        editMessageElement.innerText = "Tên playlist không Đ‘ưỏ£c Đ‘ỏƒ trỏ‘ng.";
+        editMessageElement.style.color = "#e22134";
+        return;
+      }
+      
+      submitBtn.disabled = true;
+      editMessageElement.innerText = "Đang lưu...";
+      editMessageElement.style.color = "#b3b3b3";
+      
+      try {
+        const headers = { "Content-Type": "application/json" };
+        const token = localStorage.getItem('access_token');
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        
+        const res = await fetch(`/api/playlists/${playlistId}`, { 
+          method: "PUT",
+          headers,
+          body: JSON.stringify({ name }),
+          credentials: "include"
+        });
+        
+        const data = await res.json().catch(() => ({}));
+        
+        if (res.ok) {
+          editMessageElement.innerText = "Cập nhật thÃ nh công!";
+          editMessageElement.style.color = "#667eea";
+          
+          setTimeout(() => {
+            editModal.style.display = "none";
+            loadPlaylists();
+          }, 1000);
+        } else if (res.status === 401) {
+          editMessageElement.innerText = "Phiên Đ‘Đƒng nhập hết hạn. Vui lòng Đ‘Đƒng nhập lại.";
+          editMessageElement.style.color = "#e22134";
+        } else {
+          editMessageElement.innerText = data.message || "Lỗi khi cập nhật playlist.";
+          editMessageElement.style.color = "#e22134";
+        }
+      } catch (err) {
+        console.error("Lỗi káº¿t nỏ‘i server:", err);
+        editMessageElement.innerText = "Không thể káº¿t nỏ‘i Đ‘áº¿n máy chỏ§ API.";
+        editMessageElement.style.color = "#e22134";
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  }
+  
+  function authHeaders(){
+      const h = {'Content-Type':'application/json'};
+      const token = localStorage.getItem('access_token');
+      if(token) h['Authorization'] = 'Bearer ' + token;
+      return h;
+  }
+  
+  let cachedPlaylists = [];
+  
+  function renderFiltered(term){
+      dynContainer.innerHTML='';
+      const filtered = cachedPlaylists.filter(p => !term || (p.name||'').toLowerCase().includes(term.toLowerCase()));
+      
+      if(filtered.length === 0 && term) {
+          dynContainer.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#b3b3b3;"><i class="fas fa-search" style="font-size:48px;margin-bottom:16px;opacity:0.5;"></i><p>Không tìm thấy playlist nÃ o</p></div>';
+          return;
+      }
+      
+      filtered.forEach(p=>{
+          const card = document.createElement('div');
+          card.className = 'playlist-card';
+          card.setAttribute('data-id', p.id);
+          card.style.cssText = 'background:#181818;border-radius:8px;padding:16px;transition:all 0.3s;cursor:pointer;position:relative;overflow:hidden;';
+          card.onmouseenter = function(){ this.style.background='#282828'; };
+          card.onmouseleave = function(){ this.style.background='#181818'; };
+          
+          const imgSrc = p.image_path ? '/static/' + p.image_path : '/static/images/playlist_image.png';
+          const isPublic = p.is_public || false;
+          const publicBadge = isPublic 
+            ? '<div style="position:absolute;top:8px;left:8px;background:rgba(29,185,84,0.9);padding:4px 8px;border-radius:4px;display:flex;align-items:center;gap:4px;"><i class="fas fa-globe" style="font-size:10px;color:#fff;"></i><span style="font-size:10px;color:#fff;font-weight:700;">Công khai</span></div>'
+            : '<div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.7);padding:4px 8px;border-radius:4px;display:flex;align-items:center;gap:4px;"><i class="fas fa-lock" style="font-size:10px;color:#b3b3b3;"></i><span style="font-size:10px;color:#b3b3b3;font-weight:700;">Riêng tư</span></div>';
+          
+          card.innerHTML = `
+              <a href="/playlist/${p.id}" style="text-decoration:none;color:inherit;">
+                  <div style="position:relative;margin-bottom:16px;">
+                      <img src="${imgSrc}" alt="${p.name||'Playlist'}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;box-shadow:0 8px 24px rgba(0,0,0,.5);">
+                      ${publicBadge}
+                      <div style="position:absolute;right:8px;bottom:8px;width:48px;height:48px;background:#667eea;border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transform:translateY(8px);transition:all 0.3s;box-shadow:0 8px 8px rgba(0,0,0,.3);" class="play-btn">
+                          <i class="fas fa-play" style="color:#000;font-size:18px;margin-left:2px;"></i>
+                      </div>
+                  </div>
+                  <h3 style="font-size:16px;font-weight:700;color:#fff;margin:0 0 8px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name||'Không tên'}</h3>
+                  <p style="font-size:14px;color:#b3b3b3;margin:0;">${p.song_count||0} bÃ i hát</p>
+              </a>
+          `;
+          
+          // Store playlist data on the card element
+          card.dataset.playlistName = p.name || '';
+          card.dataset.isPublic = isPublic ? '1' : '0';
+          
+          dynContainer.appendChild(card);
+      });
+      
+      statusEl.textContent = filtered.length > 0 ? `Hiỏƒn thị ${filtered.length} playlist` : '';
+  }
+  
+  function loadPlaylists(){
+      statusEl.textContent = 'Đang tải playlists...';
+      statusEl.style.color = '#b3b3b3';
+      
+      const token = localStorage.getItem('access_token');
+      const authHeadersSync = {};
+      if (token) authHeadersSync['Authorization'] = 'Bearer ' + token;
+      
+      fetch('/auth/me', { credentials: 'include', headers: authHeadersSync })
+        .then(r => {
+            if (!r.ok) {
+                try{ localStorage.removeItem('access_token'); localStorage.removeItem('username'); localStorage.removeItem('role'); }catch(e){}
+                statusEl.textContent = 'Bạn chưa Đ‘Đƒng nhập.';
+                statusEl.style.color = '#e22134';
+                emptyState.style.display = 'block';
+                return Promise.reject(new Error('not-authenticated'));
+            }
+            return r.json();
+        })
+        .then(()=> fetch('/api/playlists/', {credentials:'include', headers: authHeaders()}))
+        .then(r=>r.json().then(j=>({ok:r.ok, data:j})))
+        .then(obj=>{
+            dynContainer.innerHTML='';
+            if(!obj.ok){
+                statusEl.textContent = (obj.data && obj.data.msg) || 'Không lấy Đ‘ưỏ£c playlists.';
+                statusEl.style.color = '#e22134';
+                return;
+            }
+            cachedPlaylists = Array.isArray(obj.data) ? obj.data : [];
+            
+            // Hide server-rendered playlists if we have dynamic ones
+            if(cachedPlaylists.length > 0) {
+                gridContainer.style.display = 'none';
+                emptyState.style.display = 'none';
+            }
+            
+            if(cachedPlaylists.length === 0){
+                const hasServerPlaylists = gridContainer && gridContainer.children.length > 0;
+                if(!hasServerPlaylists) {
+                    emptyState.style.display = 'block';
+                }
+                statusEl.textContent = '';
+            } else {
+                statusEl.textContent = `ĐÃ£ tải ${cachedPlaylists.length} playlist`;
+                statusEl.style.color = '#667eea';
+                emptyState.style.display = 'none';
+            }
+            renderFiltered(document.getElementById('playlist-search').value.trim());
+        }).catch(err=>{
+                if (err && err.message === 'not-authenticated') {
+                        return;
+                }
+                statusEl.textContent = 'Lỗi káº¿t nỏ‘i server.';
+                statusEl.style.color = '#e22134';
+                console.error('playlist load error', err);
+        });
+  }
+  
+  loadPlaylists();
+  
+  // === Context Menu for Playlists ===
+  const contextMenu = document.getElementById('playlist-context-menu');
+  const contextPublicText = document.getElementById('context-public-text');
+  const contextTogglePublic = document.getElementById('context-toggle-public');
+  let currentPlaylistId = null;
+  let currentPlaylistName = null;
+  let currentIsPublic = false;
+  
+  // Show context menu on right-click - use capture phase to run before song context menu
+  document.addEventListener('contextmenu', function(e) {
+    const playlistCard = e.target.closest('.playlist-card');
+    if (playlistCard) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation(); // Stop other listeners
+      
+      console.log('[Playlist Context] Right-click on playlist:', playlistCard);
+      
+      currentPlaylistId = playlistCard.getAttribute('data-id');
+      currentPlaylistName = playlistCard.dataset.playlistName || playlistCard.querySelector('h3')?.textContent || '';
+      
+      // Get is_public status - check both dataset and attribute
+      const isPublicAttr = playlistCard.getAttribute('data-is-public') || playlistCard.dataset.isPublic || '0';
+      currentIsPublic = isPublicAttr === '1' || isPublicAttr === 'True' || isPublicAttr === 'true';
+      
+      console.log('[Playlist Context] Playlist data:', { id: currentPlaylistId, name: currentPlaylistName, isPublic: currentIsPublic });
+      
+      // Update toggle text based on current state
+      if (contextPublicText && contextTogglePublic) {
+        if (currentIsPublic) {
+          contextPublicText.textContent = 'Đáº·t riÃªng tư';
+          const icon = contextTogglePublic.querySelector('i');
+          if (icon) icon.className = 'fas fa-lock';
+        } else {
+          contextPublicText.textContent = 'Đáº·t công khai';
+          const icon = contextTogglePublic.querySelector('i');
+          if (icon) icon.className = 'fas fa-globe';
+        }
+      }
+      
+      // Position context menu
+      if (contextMenu) {
+        contextMenu.style.left = e.pageX + 'px';
+        contextMenu.style.top = e.pageY + 'px';
+        contextMenu.style.display = 'block';
+        console.log('[Playlist Context] Context menu shown at:', e.pageX, e.pageY);
+      } else {
+        console.error('[Playlist Context] Context menu element not found!');
+      }
+      
+      return false; // Prevent default and stop propagation
+    }
+  }, true); // Use capture phase to run BEFORE song context menu
+  
+  // Handle Toggle Public/Private from context menu
+  if (contextTogglePublic) {
+    contextTogglePublic.addEventListener('click', async function() {
+      contextMenu.style.display = 'none';
+      if (!currentPlaylistId) return;
+      
+      const newIsPublic = !currentIsPublic;
+      statusEl.textContent = newIsPublic ? 'Đang Đ‘áº·t công khai...' : 'Đang Đ‘áº·t riÃªng tư...';
+      statusEl.style.color = '#b3b3b3';
+      
+      try {
+        const headers = authHeaders();
+        const res = await fetch(`/api/playlists/${currentPlaylistId}`, {
+          method: 'PUT',
+          headers,
+          credentials: 'include',
+          body: JSON.stringify({ is_public: newIsPublic })
+        });
+        
+        const data = await res.json().catch(() => ({}));
+        
+        if (res.ok) {
+          statusEl.textContent = newIsPublic ? 'ĐÃ£ Đ‘áº·t công khai' : 'ĐÃ£ Đ‘áº·t riÃªng tư';
+          statusEl.style.color = '#667eea';
+          setTimeout(() => loadPlaylists(), 500);
+        } else {
+          statusEl.textContent = data.msg || 'Không thể cập nhật';
+          statusEl.style.color = '#e22134';
+        }
+      } catch (err) {
+        console.error('Lỗi káº¿t nỏ‘i:', err);
+        statusEl.textContent = 'Lỗi mạng';
+        statusEl.style.color = '#e22134';
+      }
+    });
+  }
+  
+  // Hide context menu on click elsewhere
+  document.addEventListener('click', function(e) {
+    if (contextMenu && !contextMenu.contains(e.target)) {
+      contextMenu.style.display = 'none';
+    }
+  });
+  
+  // Handle Edit from context menu
+  const contextEditBtn = document.getElementById('context-edit-playlist');
+  if (contextEditBtn) {
+    contextEditBtn.addEventListener('click', function() {
+      contextMenu.style.display = 'none';
+      if (!currentPlaylistId) return;
+      
+      editPlaylistIdInput.value = currentPlaylistId;
+      editPlaylistNameInput.value = currentPlaylistName;
+      editMessageElement.innerText = '';
+      editModal.style.display = 'block';
+    });
+  }
+  
+  // Handle Delete from context menu
+  const contextDeleteBtn = document.getElementById('context-delete-playlist');
+  if (contextDeleteBtn) {
+    contextDeleteBtn.addEventListener('click', function() {
+      contextMenu.style.display = 'none';
+      if (!currentPlaylistId) return;
+      
+      const id = currentPlaylistId;
+      if(!confirm('Xóa playlist nÃ y?')) return;
+      
+      const headers = authHeaders();
+      statusEl.textContent = 'Đang xóa...';
+      statusEl.style.color = '#b3b3b3';
+      
+      fetch('/api/playlists/'+id, {method:'DELETE', headers, credentials:'include'})
+         .then(r=>r.json().then(j=>({ok:r.ok,data:j})))
+         .then(obj=>{
+             if(obj.ok){
+                 statusEl.textContent = 'ĐÃ£ xóa playlist';
+                 statusEl.style.color = '#667eea';
+                 setTimeout(() => loadPlaylists(), 500);
+             } else {
+                 statusEl.textContent = obj.data.msg || 'Không xóa Đ‘ưỏ£c';
+                 statusEl.style.color = '#e22134';
+             }
+         }).catch(()=>{ 
+             statusEl.textContent='Lỗi mạng khi xóa';
+             statusEl.style.color = '#e22134';
+         });
+    });
+  }
+  
+  if(reloadBtn){ 
+      reloadBtn.addEventListener('click', function(){
+          this.querySelector('i').style.animation = 'spin 0.5s linear';
+          setTimeout(() => this.querySelector('i').style.animation = '', 500);
+          loadPlaylists();
+      });
+  }
+  
+  const searchInput = document.getElementById('playlist-search');
+  if(searchInput){
+      searchInput.addEventListener('input', function(){
+          renderFiltered(searchInput.value.trim());
+      });
+  }
+});
+</script>
+
+<style>
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}

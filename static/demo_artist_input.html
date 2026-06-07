@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Demo: Thêm nghệ sĩ bằng cách gõ tên</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .demo-box {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .instruction {
+            background: #e7f3ff;
+            padding: 15px;
+            border-left: 4px solid #667eea;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #667eea;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .tags-container {
+            min-height: 50px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .tag {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .tag.success {
+            background: #667eea;
+            color: white;
+        }
+        .tag.error {
+            background: #dc3545;
+            color: white;
+        }
+        .tag button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+        }
+        .result.show {
+            display: block;
+        }
+        .result.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .result.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-box">
+        <h1>🎵 Demo: Thêm nghệ sĩ bằng cách gõ tên</h1>
+        
+        <div class="instruction">
+            <strong>📝 Hướng dẫn:</strong>
+            <ol>
+                <li>Gõ tên nghệ sĩ, cách nhau bởi dấu phẩy</li>
+                <li>Ví dụ: <code>Sơn Tùng M-TP, Hà Anh Tuấn, Mỹ Tâm</code></li>
+                <li>Nhấn Enter hoặc click ra ngoài để validate</li>
+                <li>Nghệ sĩ tồn tại sẽ có tag màu xanh ✅</li>
+                <li>Nghệ sĩ không tồn tại sẽ có tag màu đỏ ❌</li>
+            </ol>
+        </div>
+
+        <label><strong>Tên nghệ sĩ:</strong></label>
+        <input 
+            type="text" 
+            id="artist-input" 
+            placeholder="Ví dụ: Sơn Tùng M-TP, Bray, Taylor Swift"
+        >
+
+        <div id="tags-container" class="tags-container">
+            <span style="color:#999;">Nghệ sĩ đã chọn sẽ hiển thị ở đây...</span>
+        </div>
+
+        <button onclick="validateArtists()">✅ Kiểm tra nghệ sĩ</button>
+        <button onclick="resetForm()" style="background:#6c757d;">🔄 Reset</button>
+
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        let allArtists = [];
+        let selectedArtists = {};
+
+        // Load danh sách nghệ sĩ từ server
+        async function loadArtists() {
+            try {
+                const response = await fetch('/api/artists');
+                allArtists = await response.json();
+                console.log('Loaded', allArtists.length, 'artists');
+            } catch(err) {
+                console.error('Lỗi load nghệ sĩ:', err);
+            }
+        }
+
+        function normalizeText(text) {
+            return text.toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .trim();
+        }
+
+        function findArtist(name) {
+            const normalized = normalizeText(name);
+            return allArtists.find(a => 
+                normalizeText(a.name) === normalized ||
+                normalizeText(a.name).includes(normalized) ||
+                normalized.includes(normalizeText(a.name))
+            );
+        }
+
+        function validateArtists() {
+            const input = document.getElementById('artist-input').value;
+            const names = input.split(',').map(n => n.trim()).filter(n => n);
+            
+            selectedArtists = {};
+            const notFound = [];
+            
+            names.forEach(name => {
+                const artist = findArtist(name);
+                if (artist) {
+                    selectedArtists[artist.id] = artist.name;
+                } else {
+                    notFound.push(name);
+                }
+            });
+
+            updateTags(notFound);
+            showResult(notFound);
+        }
+
+        function updateTags(notFound) {
+            const container = document.getElementById('tags-container');
+            container.innerHTML = '';
+
+            // Hiển thị nghệ sĩ tìm thấy
+            Object.entries(selectedArtists).forEach(([id, name]) => {
+                const tag = document.createElement('span');
+                tag.className = 'tag success';
+                tag.innerHTML = `✅ ${name} <button onclick="removeArtist(${id})">×</button>`;
+                container.appendChild(tag);
+            });
+
+            // Hiển thị nghệ sĩ không tìm thấy
+            notFound.forEach(name => {
+                const tag = document.createElement('span');
+                tag.className = 'tag error';
+                tag.textContent = `❌ ${name} (không tồn tại)`;
+                container.appendChild(tag);
+            });
+
+            if (Object.keys(selectedArtists).length === 0 && notFound.length === 0) {
+                container.innerHTML = '<span style="color:#999;">Nghệ sĩ đã chọn sẽ hiển thị ở đây...</span>';
+            }
+        }
+
+        function showResult(notFound) {
+            const result = document.getElementById('result');
+            result.classList.add('show');
+
+            if (notFound.length > 0) {
+                result.className = 'result show error';
+                result.innerHTML = `
+                    <strong>❌ Có ${notFound.length} nghệ sĩ không tồn tại:</strong><br>
+                    ${notFound.map(n => `• ${n}`).join('<br>')}
+                    <br><br>
+                    <strong>✅ Đã tìm thấy ${Object.keys(selectedArtists).length} nghệ sĩ:</strong><br>
+                    ${Object.values(selectedArtists).join(', ')}
+                `;
+            } else if (Object.keys(selectedArtists).length > 0) {
+                result.className = 'result show success';
+                result.innerHTML = `
+                    <strong>✅ Thành công! Tìm thấy ${Object.keys(selectedArtists).length} nghệ sĩ:</strong><br>
+                    ${Object.values(selectedArtists).join(', ')}
+                    <br><br>
+                    <strong>IDs:</strong> ${Object.keys(selectedArtists).join(', ')}
+                `;
+            } else {
+                result.className = 'result show error';
+                result.textContent = '⚠️ Vui lòng nhập tên nghệ sĩ!';
+            }
+        }
+
+        function removeArtist(id) {
+            delete selectedArtists[id];
+            const names = Object.values(selectedArtists).join(', ');
+            document.getElementById('artist-input').value = names;
+            updateTags([]);
+        }
+
+        function resetForm() {
+            document.getElementById('artist-input').value = '';
+            selectedArtists = {};
+            updateTags([]);
+            document.getElementById('result').classList.remove('show');
+        }
+
+        // Auto validate on Enter or blur
+        document.getElementById('artist-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                validateArtists();
+            }
+        });
+
+        document.getElementById('artist-input').addEventListener('blur', validateArtists);
+
+        // Load artists when page loads
+        loadArtists();
+    </script>
+</body>
+</html>

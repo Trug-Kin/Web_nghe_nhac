@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+{% block title %}{{ song.title }} - Chi tiết bài hát{% endblock %}
+
+{% block content %}
+<div class="song-detail-page" style="padding:25px;max-width:1200px;margin:0 auto;color:#fff;">
+    <div class="song-detail-main" style="display:flex;gap:36px;align-items:flex-start;">
+        <!-- Left: Song info -->
+        <div class="song-detail-left" style="flex:2;min-width:0;">
+            <div class="song-detail-header" style="display:flex;gap:24px;margin-bottom:32px;align-items:flex-start;">
+                <div class="song-cover" style="flex-shrink:0;">
+                    {% if song.album and song.album.cover_image_path %}
+                    <img src="{{ url_for('static', filename=song.album.cover_image_path) }}" 
+                             alt="{{ song.title }}" 
+                             style="width:200px;height:200px;border-radius:12px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+                    {% else %}
+                    <div style="width:200px;height:200px;border-radius:12px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;">
+                        <i class="fa-solid fa-music" style="font-size:60px;color:rgba(255,255,255,0.3);"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="song-info" style="flex:1;">
+                    <h1 style="font-size:32px;margin-bottom:8px;">{{ song.title }}</h1>
+                    <p style="font-size:18px;color:#1db954;margin-bottom:12px;">
+                        {% if song.artist %}
+                        <a href="/artist/{{ song.artist.id }}" style="color:#1db954;text-decoration:none;">{{ song.artist.name }}</a>
+                        {% else %}
+                        Unknown Artist
+                        {% endif %}
+                    </p>
+                    {% if song.album %}
+                    <p style="font-size:14px;color:#999;margin-bottom:8px;">
+                        Album: <a href="/album/{{ song.album.id }}" style="color:#999;">{{ song.album.title }}</a>
+                    </p>
+                    {% endif %}
+                    {% if song.genre %}
+                    <p style="font-size:14px;color:#999;margin-bottom:16px;">
+                        Thể loại: <a href="/genre/{{ song.genre.id }}" style="color:#999;">{{ song.genre.name }}</a>
+                    </p>
+                    {% endif %}
+                    <!-- Like button -->
+                    <button class="like-button" onclick="toggleLike({{ song.id }}, this)" style="margin-bottom:16px;">
+                        <i class="fa-regular fa-heart like-icon"></i>
+                        <span class="like-count">0</span>
+                    </button>
+                    <!-- Play button -->
+                    <button class="play-song-btn" 
+                                    onclick="playSong({{ song.id }}, '{{ song.title|safe }}', '{{ song.artist.name|safe if song.artist else 'Unknown' }}', '/static/{{ song.mp3_path }}', { artistId: {{ song.artist.id if song.artist else 'null' }}, albumId: {{ song.album.id if song.album else 'null' }}, genreId: {{ song.genre.id if song.genre else 'null' }} })"
+                                    style="padding:12px 32px;background:#1db954;color:#fff;border:none;border-radius:24px;font-weight:600;cursor:pointer;font-size:16px;transition:background 0.2s;">
+                        <i class="fa-solid fa-play"></i> Phát nhạc
+                    </button>
+                </div>
+            </div>
+            <!-- (Có thể thêm lyric, info khác ở đây nếu muốn) -->
+        </div>
+        <!-- Right: Comment panel -->
+        <div class="song-detail-right" style="flex:1;min-width:320px;max-width:420px;">
+            <div class="comments-section" data-song-id="{{ song.id }}">
+                <h2 class="comments-title">
+                    <i class="fa-solid fa-comments"></i> Bình luận
+                </h2>
+                <!-- Comment form -->
+                <form class="comment-form" onsubmit="handleCommentSubmit(event, {{ song.id }})">
+                    <textarea class="comment-input" 
+                                        placeholder="Viết bình luận của bạn..." 
+                                        name="comment"
+                                        maxlength="1000"
+                                        required></textarea>
+                    <button type="submit" class="comment-submit-btn">
+                        <i class="fa-solid fa-paper-plane"></i> Gửi bình luận
+                    </button>
+                </form>
+                        <!-- Comments list -->
+                        <div class="comments-container">
+                            <p style="text-align:center;color:#888;">Đang tải bình luận...</p>
+                            <!--
+                                Danh sách comment sẽ được JS render động, ví dụ:
+                                <div class="comments-list">
+                                    <div class="comment-item">
+                                        <div class="comment-header">
+                                            <img class="comment-avatar" src="{{ url_for('static', filename='images/default.jpg') }}" alt="avatar">
+                                            <span class="comment-user">Tên người dùng</span>
+                                            <span class="comment-time">1 phút trước</span>
+                                            <button class="comment-delete-btn"><i class="fa-solid fa-trash"></i></button>
+                                        </div>
+                                        <div class="comment-content">Nội dung bình luận...</div>
+                                    </div>
+                                </div>
+                            -->
+                        </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Play song function - properly update player UI including album art and queue
+function playSong(songId, title, artist, mp3Path, context) {
+    const audioPlayer = document.getElementById('audio-player');
+    const currentSongTitle = document.getElementById('current-song-title');
+    const currentArtistName = document.getElementById('current-artist-name');
+    const currentSongImage = document.getElementById('current-song-image');
+    
+    if (!audioPlayer) return;
+    
+    // Get album image from the page
+    let albumImage = '/static/images/default_album.png';
+    const songCoverImg = document.querySelector('.song-cover img');
+    if (songCoverImg && songCoverImg.src) {
+        // Extract path from full URL
+        try {
+            const url = new URL(songCoverImg.src);
+            albumImage = url.pathname;
+        } catch(e) {
+            albumImage = songCoverImg.src;
+        }
+    }
+    
+    // Update player UI
+    audioPlayer.src = mp3Path;
+    if (currentSongTitle) currentSongTitle.textContent = title;
+    if (currentArtistName) currentArtistName.textContent = artist;
+    if (currentSongImage) {
+        currentSongImage.src = albumImage;
+        currentSongImage.alt = title;
+    }
+    
+    // Determine context for autoplay (prefer artist > genre > album)
+    let contextType = '';
+    let contextId = null;
+    
+    if (context) {
+        if (context.artistId) {
+            contextType = 'artist';
+            contextId = context.artistId;
+        } else if (context.genreId) {
+            contextType = 'genre';
+            contextId = context.genreId;
+        } else if (context.albumId) {
+            contextType = 'album';
+            contextId = context.albumId;
+        }
+    }
+    
+    // Create a virtual playlist with this single song for queue modal
+    if (window.createSingleSongPlaylist) {
+        window.createSingleSongPlaylist({
+            songId: songId,
+            mp3: mp3Path,
+            title: title,
+            artist: artist,
+            image: albumImage
+        });
+    }
+    
+    // Save player state to localStorage with context
+    try {
+        const state = {
+            mp3: mp3Path,
+            title: title,
+            artist: artist,
+            image: albumImage,
+            songId: songId,
+            currentTime: 0,
+            isPlaying: true,
+            contextType: contextType,
+            contextId: contextId,
+            currentIndex: 0
+        };
+        localStorage.setItem('player_state', JSON.stringify(state));
+        
+        // Update currentSongId for history tracking
+        window.currentSongId = songId;
+        const playSession = String(songId) + ':' + String(Date.now());
+        sessionStorage.setItem('currentPlaySession', playSession);
+        window.currentPlaySession = playSession;
+        window.thresholdLogged = false;
+    } catch(e) {
+        console.warn('Failed to save player state:', e);
+    }
+    
+    // Load and play
+    audioPlayer.load();
+    audioPlayer.play().catch(err => {
+        console.log('Play interrupted or failed:', err);
+    });
+}
+
+// Handle comment form submit
+function handleCommentSubmit(event, songId) {
+    event.preventDefault();
+    const form = event.target;
+    const textarea = form.querySelector('textarea[name="comment"]');
+    const content = textarea.value.trim();
+    const commentsContainer = document.querySelector('.comments-container');
+    
+    addComment(songId, content, form, commentsContainer);
+}
+
+// Load initial data
+document.addEventListener('DOMContentLoaded', function() {
+    const songId = {{ song.id }};
+    const likeButton = document.querySelector('.like-button');
+    const commentsContainer = document.querySelector('.comments-container');
+    
+    // Load like status
+    if (likeButton) {
+        loadLikeStatus(songId, likeButton.parentElement);
+    }
+    
+    // Load comments
+    if (commentsContainer) {
+        loadComments(songId, commentsContainer);
+    }
+});
+</script>
+{% endblock %}

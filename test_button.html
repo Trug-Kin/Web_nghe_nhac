@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Button Click</title>
+    <style>
+        .edit-btn {
+            padding: 8px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .edit-btn i {
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Button Click Event</h1>
+    
+    <div class="song-action-buttons">
+        <button class="edit-btn" data-song-id="123" type="button">
+            <i class="fas fa-edit"></i> Sửa
+        </button>
+    </div>
+
+    <div id="output"></div>
+
+    <script>
+        console.log('Script loaded');
+        
+        function testClick(songId) {
+            console.log('testClick called with:', songId);
+            document.getElementById('output').innerHTML = 'Clicked song ID: ' + songId;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOMContentLoaded');
+            
+            document.body.addEventListener('click', function(e) {
+                console.log('Click detected on:', e.target);
+                
+                let target = e.target;
+                
+                // If clicked on icon, get the parent button
+                if (target.tagName === 'I') {
+                    target = target.parentElement;
+                }
+                
+                // Check if it's an edit button
+                if (target && target.classList && target.classList.contains('edit-btn')) {
+                    const songId = target.getAttribute('data-song-id');
+                    if (songId) {
+                        console.log('Edit button clicked for song ID:', songId);
+                        testClick(parseInt(songId));
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

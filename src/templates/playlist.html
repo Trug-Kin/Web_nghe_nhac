@@ -1,0 +1,632 @@
+{% extends "base.html" %}
+{% block title %}Playlist - {{ playlist.name if playlist else '' }}{% endblock %}
+
+{% block content %}
+<input type="hidden" id="entity-id" value="{{ playlist.id if playlist else '' }}">
+<input type="hidden" id="entity-type" value="playlists">
+
+<div id="entity-page" class="entity-page playlist-page" style="background:linear-gradient(180deg, rgba(83,83,83,0.5) 0%, #121212 300px);padding:0;margin:0;min-height:100vh;">
+    <!-- Header with gradient background like Spotify -->
+    {% set last_song = playlist.songs.all()[-1] if playlist and playlist.songs and playlist.songs.count() > 0 else none %}
+    {% if last_song %}
+        {% if last_song.image_path %}
+            {% set header_image = last_song.image_path %}
+        {% elif last_song.album and last_song.album.cover_image_path %}
+            {% set header_image = last_song.album.cover_image_path %}
+        {% else %}
+            {% set header_image = 'images/default.jpg' %}
+        {% endif %}
+    {% else %}
+        {% set header_image = 'images/playlist_image.png' %}
+    {% endif %}
+    <header class="playlist-header" style="padding:24px 32px 24px 32px;display:flex;align-items:flex-end;gap:24px;min-height:280px;background:linear-gradient(transparent 0, rgba(0,0,0,.5) 100%), url('{{ url_for('static', filename=header_image) }}') center/cover;">
+        <div style="flex-shrink:0;">
+            <img id="entity-image" src="{{ url_for('static', filename=header_image) }}" alt="{{ playlist.name if playlist else 'Playlist' }}" style="width:232px;height:232px;object-fit:cover;border-radius:4px;box-shadow:0 4px 60px rgba(0,0,0,.5);">
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+            <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">PLAYLIST</span>
+            <h1 id="entity-name" style="font-size:clamp(32px, 6vw, 72px);font-weight:900;line-height:1.1;margin:0;word-break:break-word;">{{ playlist.name if playlist else 'Playlist' }}</h1>
+            {% if playlist.description %}
+            <p id="playlist-desc" style="color:#b3b3b3;margin:8px 0 0 0;font-size:14px;">{{ playlist.description }}</p>
+            {% endif %}
+            <div style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:14px;font-weight:600;">
+                <span style="color:#fff;">{{ playlist.owner.username if playlist and playlist.owner else 'Người dùng' }}</span>
+                <span style="color:#b3b3b3;">• {{ playlist.songs.count() if playlist and playlist.songs else 0 }} bài hát</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Controls Section -->
+    <div style="padding:24px 32px;background:#121212;">
+        <div style="display:flex;align-items:center;gap:32px;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:32px;">
+                <button onclick="playAllSongs()" style="width:56px;height:56px;border-radius:50%;background:#667eea;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.3s;box-shadow:0 8px 8px rgba(0,0,0,.3);">
+                    <i class="fa-solid fa-play" style="font-size:24px;color:#000;margin-left:4px;"></i>
+                </button>
+                {% if can_manage %}
+                <button id="edit-playlist-btn" style="background:transparent;border:1px solid #727272;color:#fff;padding:8px 32px;border-radius:500px;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.3s;">
+                    <i class="fas fa-pen" style="margin-right:8px;"></i>Chỏ‰nh sỏ­a
+                </button>
+                <button id="delete-playlist-btn" style="background:transparent;border:1px solid #727272;color:#fff;padding:8px 32px;border-radius:500px;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.3s;">
+                    <i class="fas fa-trash" style="margin-right:8px;"></i>Xóa
+                </button>
+                {% endif %}
+            </div>
+            {% if can_manage %}
+            <div style="display:flex;align-items:center;gap:12px;position:relative;z-index:10;">
+                <button id="public-toggle-btn" onclick="togglePublicStatus()" class="public-toggle-btn" data-is-public="{{ 'true' if playlist.is_public else 'false' }}" style="display:flex;align-items:center;gap:10px;background:{% if playlist.is_public %}#667eea{% else %}transparent{% endif %};border:1px solid {% if playlist.is_public %}#667eea{% else %}#727272{% endif %};color:#fff;padding:10px 28px;border-radius:500px;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.3s;position:relative;z-index:10;">
+                    <i class="fas {% if playlist.is_public %}fa-globe{% else %}fa-lock{% endif %}" id="public-icon"></i>
+                    <span id="public-text">{% if playlist.is_public %}Công khai{% else %}Riêng tư{% endif %}</span>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Song List -->
+    <div class="song-list-container" style="padding:0 32px 32px 32px;background:#121212;">
+        <table class="song-table" style="width:100%;border-collapse:collapse;color:#b3b3b3;">
+            <thead>
+                <tr style="border-bottom:1px solid #282828;height:36px;">
+                    {% if can_manage %}<th style="width:40px;text-align:center;padding:8px;"><input type="checkbox" id="select-all-songs" style="cursor:pointer;"></th>{% endif %}
+                    <th style="width:40px;text-align:center;padding:8px 16px;color:#b3b3b3;font-weight:400;font-size:12px;">#</th>
+                    <th style="text-align:left;padding:8px 16px;color:#b3b3b3;font-weight:400;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Tiêu Đ‘ỏ</th>
+                    <th style="text-align:left;padding:8px 16px;color:#b3b3b3;font-weight:400;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Album</th>
+                    <th style="width:80px;text-align:center;padding:8px 16px;"><i class="far fa-heart" style="color:#b3b3b3;"></i></th>
+                    <th style="width:80px;text-align:center;padding:8px 16px;"><i class="fas fa-play" style="color:#b3b3b3;font-size:12px;"></i></th>
+                    {% if can_manage %}<th style="width:80px;text-align:center;padding:8px 16px;"></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody id="song-list-body">
+            {% if playlist and playlist.songs %}
+                {% for s in playlist.songs %}
+                <tr class="song-row" data-song-id="{{ s.id }}" data-mp3-path="{% if s.mp3_path %}{% if s.mp3_path.startswith('/static/') %}{{ s.mp3_path }}{% else %}/static/{{ s.mp3_path }}{% endif %}{% else %}{% endif %}" data-title="{{ s.title }}" data-artist-name="{{ s.artist_name if s.artist_name else '' }}" data-artist-id="{{ s.artist_id or '' }}" data-album-image="{% if s.image_path %}{% if s.image_path.startswith('/static/') %}{{ s.image_path }}{% else %}/static/{{ s.image_path }}{% endif %}{% else %}{% if s.album and s.album.cover_image_path %}/static/{{ s.album.cover_image_path }}{% else %}/static/images/default.jpg{% endif %}{% endif %}" data-init-like="{{ s.initial_like_count if s.initial_like_count is not none else 0 }}" data-init-listen="{{ s.initial_listen_count if s.initial_listen_count is not none else 0 }}" style="height:56px;border:none;transition:background-color 0.3s;" onmouseenter="this.style.backgroundColor='#2a2a2a'" onmouseleave="this.style.backgroundColor='transparent'">
+                    {% if can_manage %}
+                    <td style="text-align:center;vertical-align:middle;padding:8px 16px;" onclick="event.stopPropagation();">
+                        <input type="checkbox" class="song-select-checkbox" data-song-id="{{ s.id }}" style="cursor:pointer;">
+                    </td>
+                    {% endif %}
+                    <td style="padding:8px 16px;color:#b3b3b3;font-size:14px;">{{ loop.index }}</td>
+                    <td style="padding:8px 16px;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <img src="{% if s.image_path %}{% if s.image_path.startswith('/static/') %}{{ s.image_path }}{% else %}/static/{{ s.image_path }}{% endif %}{% else %}{% if s.album and s.album.cover_image_path %}/static/{{ s.album.cover_image_path }}{% else %}/static/images/default.jpg{% endif %}{% endif %}" alt="{{ s.title }}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;">
+                            <div>
+                                <div class="song-title" style="position:relative;">
+                                    <a href="{{ url_for('music.song_detail_page', id=s.id) }}" class="song-title-link" onclick="event.stopPropagation();" style="color:#fff;text-decoration:none;font-size:16px;font-weight:400;">{{ s.title }}</a>
+                                    <i class="fa-solid fa-play play-icon" style="position:absolute;left:-24px;top:2px;opacity:0;transition:opacity 0.3s;"></i>
+                                </div>
+                                <div style="font-size:14px;color:#b3b3b3;margin-top:4px;">
+                                    {% if s.artist_id %}<a href="{{ url_for('music.artist_page', id=s.artist_id) }}" class="artist-link" onclick="event.stopPropagation();" style="color:#b3b3b3;text-decoration:none;">{{ s.artist_name }}</a>{% else %}{{ s.artist_name }}{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td style="padding:8px 16px;color:#b3b3b3;font-size:14px;">{% if s.album %}{{ s.album.title }}{% else %}-{% endif %}</td>
+                    <td class="like-cell" style="text-align:center;vertical-align:middle;padding:8px 16px;">
+                        <button class="like-button" data-song-id="{{ s.id }}" title="Thích" onclick="if(typeof toggleLike === 'function') { toggleLike({{ s.id }}, this); } event.stopPropagation();" style="background:transparent;border:none;cursor:pointer;color:#b3b3b3;transition:color 0.3s;">
+                            <i class="fa-regular fa-heart like-icon" style="font-size:16px;"></i>
+                            <span class="like-count" style="margin-left:6px;font-size:14px;">{{ s.initial_like_count if s.initial_like_count is not none else (s.like_count if s and getattr(s, 'like_count', None) is not none else 0) }}</span>
+                        </button>
+                    </td>
+                    <td class="listen-count" style="text-align:center;vertical-align:middle;padding:8px 16px;color:#b3b3b3;font-size:14px;">
+                        <span>{{ s.initial_listen_count if s.initial_listen_count is not none else (s.listen_count if s and getattr(s, 'listen_count', None) is not none else 0) }}</span>
+                    </td>
+                    {% if can_manage %}
+                    <td style="text-align:center;vertical-align:middle;padding:8px 16px;">
+                        <button class="remove-song-btn" data-id="{{ s.id }}" title="Xóa khỏi playlist" onclick="removeSongFromPlaylist({{ s.id }}, {{ playlist.id if playlist else 'null' }}, this); event.stopPropagation();" style="background:transparent;border:none;color:#b3b3b3;cursor:pointer;font-size:14px;transition:color 0.3s;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="{% if can_manage %}7{% else %}5{% endif %}" style="text-align:center;padding:24px;color:#b3b3b3;">Chưa có bÃ i hát nÃ o.</td></tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Management controls: only visible to owner/uploader/admin -->
+    {% if can_manage %}
+    <div id="playlist-controls" style="padding:32px;background:#181818;border-radius:8px;margin:32px;">
+        <h3 style="color:#fff;margin-bottom:16px;">Quản lý playlist</h3>
+        
+        <!-- Quick Add Section -->
+        <div style="background:#282828;padding:20px;border-radius:8px;margin-bottom:16px;">
+            <h4 style="color:#fff;margin-bottom:12px;font-size:14px;">Thêm bÃ i hát nhanh</h4>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                <input id="add-song-id" placeholder="Song ID" style="padding:10px;background:#121212;border:1px solid #404040;border-radius:4px;color:#fff;flex:1;min-width:120px;">
+                <button id="add-song-btn" style="padding:10px 24px;background:#667eea;border:none;border-radius:4px;color:#fff;font-weight:700;cursor:pointer;transition:all 0.3s;">Thêm</button>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;">
+                <input id="bulk-add-song-ids" placeholder="VD: 12,15,20" style="padding:10px;background:#121212;border:1px solid #404040;border-radius:4px;color:#fff;flex:1;min-width:180px;">
+                <button id="bulk-add-btn" style="padding:10px 24px;background:#667eea;border:none;border-radius:4px;color:#fff;font-weight:700;cursor:pointer;transition:all 0.3s;">Thêm nhiỏu</button>
+            </div>
+        </div>
+
+        <!-- Bulk Actions -->
+        <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+            <button id="bulk-remove-btn" style="display:none;padding:10px 24px;background:#e22134;border:none;border-radius:4px;color:#fff;font-weight:700;cursor:pointer;">
+                <i class="fas fa-trash" style="margin-right:8px;"></i>Xóa các bÃ i Đ‘Ã£ chỏn
+            </button>
+        </div>
+
+        <div id="playlist-action-message" style="padding:12px;background:#282828;border-radius:4px;font-size:13px;color:#b3b3b3;display:none;"></div>
+
+        <!-- Song Search Panel -->
+        <div id="song-search-panel" style="background:#282828;padding:20px;border-radius:8px;margin-top:16px;">
+            <h4 style="color:#fff;margin-bottom:12px;font-size:14px;">Tìm vÃ  thÃªm bÃ i hát</h4>
+            <input id="song-search-input" type="text" placeholder="Tìm bÃ i hát (tên hoáº·c nghệ sĩ)" style="width:100%;padding:12px;background:#121212;border:1px solid #404040;border-radius:4px;color:#fff;margin-bottom:8px;">
+            <div id="song-search-status" style="font-size:12px;color:#b3b3b3;margin-bottom:8px;"></div>
+            <ul id="song-search-results" style="list-style:none;padding:0;margin:0;max-height:320px;overflow:auto;"></ul>
+            <button id="add-selected-search-songs" style="display:none;margin-top:12px;padding:10px 24px;background:#667eea;border:none;border-radius:4px;color:#fff;font-weight:700;cursor:pointer;">
+                <i class="fas fa-plus" style="margin-right:8px;"></i>Thêm các bÃ i Đ‘Ã£ tick
+            </button>
+        </div>
+    </div>
+    {% else %}
+    <div id="playlist-controls" style="display:none;"></div>
+    {% endif %}
+
+        <div id="editPlaylistModal" class="modal" style="display:none;position:fixed;z-index:9999;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);">
+            <div class="modal-content" style="background:#282828;padding:32px;border-radius:8px;max-width:520px;margin:80px auto;box-shadow:0 4px 60px rgba(0,0,0,.5);">
+                <span class="close-edit" style="float:right;cursor:pointer;color:#b3b3b3;font-size:28px;font-weight:300;transition:color 0.3s;">&times;</span>
+                <h3 style="color:#fff;margin:0 0 24px 0;font-size:24px;font-weight:700;">Chỏ‰nh sỏ­a chi tiáº¿t</h3>
+                <form id="editPlaylistForm">
+                    <div style="margin-bottom:20px;">
+                        <label for="editPlaylistName" style="display:block;color:#fff;font-weight:700;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">Tên playlist</label>
+                        <input id="editPlaylistName" type="text" maxlength="150" style="width:100%;padding:12px;background:#121212;border:1px solid #404040;border-radius:4px;color:#fff;font-size:14px;" required>
+                    </div>
+                    <div style="margin-bottom:20px;">
+                        <label for="editPlaylistDesc" style="display:block;color:#fff;font-weight:700;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">Mô tả</label>
+                        <textarea id="editPlaylistDesc" maxlength="500" style="width:100%;height:100px;padding:12px;background:#121212;border:1px solid #404040;border-radius:4px;color:#fff;font-size:14px;resize:vertical;"></textarea>
+                    </div>
+                    <div style="display:flex;gap:12px;justify-content:flex-end;">
+                        <button type="button" id="cancelEditBtn" style="padding:12px 32px;background:transparent;border:1px solid #727272;border-radius:500px;color:#fff;font-weight:700;cursor:pointer;transition:all 0.3s;">Hủy</button>
+                        <button type="submit" id="saveEditBtn" style="padding:12px 32px;background:#667eea;border:none;border-radius:500px;color:#fff;font-weight:700;cursor:pointer;transition:all 0.3s;">Lưu</button>
+                    </div>
+                    <p id="editPlaylistMessage" style="font-size:13px;margin-top:16px;color:#b3b3b3;"></p>
+                </form>
+            </div>
+        </div>
+</div>
+
+<style>
+/* Spotify-like hover effects */
+.song-row:hover .play-icon {
+    opacity: 1 !important;
+}
+.song-row:hover .song-title-link {
+    text-decoration: underline;
+}
+#edit-playlist-btn:hover, #delete-playlist-btn:hover {
+    border-color: #fff;
+    transform: scale(1.04);
+}
+#add-song-btn:hover, #bulk-add-btn:hover, #saveEditBtn:hover, #add-selected-search-songs:hover {
+    background: #764ba2;
+    transform: scale(1.04);
+}
+#bulk-remove-btn:hover {
+    background: #ff1744;
+}
+.like-button:hover {
+    color: #667eea !important;
+}
+.remove-song-btn:hover {
+    color: #fff !important;
+}
+.close-edit:hover {
+    color: #fff !important;
+}
+#cancelEditBtn:hover {
+    border-color: #fff;
+}
+</style>
+
+<script>
+// GLOBAL FUNCTION - Toggle public/private status (must be defined before HTML loads)
+window.togglePublicStatus = async function() {
+    console.log('[PublicToggle] togglePublicStatus called!');
+    
+    const btn = document.getElementById('public-toggle-btn');
+    if (!btn) {
+        console.error('[PublicToggle] Button not found!');
+        return;
+    }
+    
+    const currentState = btn.getAttribute('data-is-public') === 'true';
+    const newState = !currentState;
+    const playlistId = {{ playlist.id if playlist else 'null' }};
+    
+    console.log('[PublicToggle] Current state:', currentState, '-> New state:', newState);
+    
+    try {
+        console.log('[PublicToggle] Getting JWT token...');
+        const token = getJwtToken();
+        console.log('[PublicToggle] Token:', token ? 'Found' : 'Not found');
+        if (!token) {
+            alert('Vui lòng Đ‘Đƒng nhập');
+            return;
+        }
+        
+        console.log('[PublicToggle] Sending API request...');
+        const response = await fetch(`/api/playlists/${playlistId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ is_public: newState })
+        });
+        
+        const data = await response.json();
+        console.log('[PublicToggle] Response:', data);
+        
+        if (response.ok) {
+            // Update button
+            btn.setAttribute('data-is-public', newState.toString());
+            document.getElementById('public-icon').className = newState ? 'fas fa-globe' : 'fas fa-lock';
+            document.getElementById('public-text').textContent = newState ? 'Công khai' : 'Riêng tư';
+            btn.style.background = newState ? '#667eea' : 'transparent';
+            btn.style.borderColor = newState ? '#667eea' : '#727272';
+            
+            // Show notification
+            const notif = document.createElement('div');
+            notif.textContent = newState ? 'âœ“ Playlist Đ‘Ã£ công khai' : 'âœ“ Playlist Đ‘Ã£ chuyỏƒn riÃªng tư';
+            notif.style.cssText = 'position:fixed;top:80px;right:20px;background:#667eea;color:#fff;padding:16px 24px;border-radius:8px;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.3);font-size:14px;font-weight:600;';
+            document.body.appendChild(notif);
+            setTimeout(() => notif.remove(), 3000);
+        } else {
+            throw new Error(data.msg || 'Lỗi cập nhật');
+        }
+    } catch (error) {
+        console.error('[PublicToggle] Error:', error);
+        alert('Không thể cập nhật: ' + error.message);
+    }
+};
+
+function playAllSongs() {
+    const firstSongRow = document.querySelector('#song-list-body .song-row');
+    if (firstSongRow) {
+        firstSongRow.click();
+    }
+}
+
+// Select all checkbox functionality
+const selectAllCheckbox = document.getElementById('select-all-songs');
+if (selectAllCheckbox) {
+    selectAllCheckbox.addEventListener('change', function(e) {
+        e.stopPropagation();
+        const checkboxes = document.querySelectorAll('.song-select-checkbox');
+        checkboxes.forEach(cb => cb.checked = this.checked);
+        updateBulkRemoveButton();
+    });
+}
+
+// Update bulk remove button visibility
+function updateBulkRemoveButton() {
+    const anyChecked = document.querySelectorAll('.song-select-checkbox:checked').length > 0;
+    const bulkBtn = document.getElementById('bulk-remove-btn');
+    if (bulkBtn) {
+        bulkBtn.style.display = anyChecked ? 'block' : 'none';
+    }
+}
+
+document.querySelectorAll('.song-select-checkbox').forEach(cb => {
+    cb.addEventListener('change', updateBulkRemoveButton);
+});
+
+// Populate any empty like/listen spans from server-injected data attributes (debug + fallback)
+(function(){
+    try{
+        document.querySelectorAll('#song-list-body tr.song-row').forEach(function(row){
+            var likeSpan = row.querySelector('.like-count');
+            var listenSpan = row.querySelector('.listen-count span');
+            var initLike = row.getAttribute('data-init-like');
+            var initListen = row.getAttribute('data-init-listen');
+            if(likeSpan){
+                // If the visible text is empty or whitespace, fill with server value or 0
+                if(!likeSpan.textContent || likeSpan.textContent.trim()===''){
+                    if(initLike && initLike !== 'null') likeSpan.textContent = initLike;
+                    else likeSpan.textContent = '0';
+                }
+            }
+            if(listenSpan){
+                if(!listenSpan.textContent || listenSpan.textContent.trim()===''){
+                    if(initListen && initListen !== 'null') listenSpan.textContent = initListen;
+                    else listenSpan.textContent = '0';
+                }
+            }
+        });
+    }catch(e){console.warn('init counts populate failed', e);}
+})();
+
+console.log('[PlaylistPage] Script loaded, will init in 100ms');
+
+// Global function to remove song from playlist
+window.removeSongFromPlaylist = function(songId, playlistId, buttonElement) {
+    console.log('[Remove] Function called with songId:', songId, 'playlistId:', playlistId);
+    
+    if (!songId || !playlistId) {
+        alert('Lỗi: Không tìm thấy thông tin bÃ i hát');
+        return;
+    }
+    
+    if (!confirm('Xóa bÃ i nÃ y khỏi playlist?')) return;
+    
+    const token = localStorage.getItem('access_token');
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    
+    const actionMsg = document.getElementById('playlist-action-message');
+    if (actionMsg) {
+        actionMsg.style.color = 'gray';
+        actionMsg.textContent = 'Đang xóa...';
+        actionMsg.style.display = 'block';
+    }
+    
+    fetch(`/api/playlists/${playlistId}/remove_song`, {
+        method: 'POST',
+        headers: headers,
+        credentials: 'include',
+        body: JSON.stringify({ song_id: parseInt(songId) })
+    })
+    .then(r => {
+        console.log('[Remove] Response status:', r.status);
+        return r.json();
+    })
+    .then(data => {
+        console.log('[Remove] Response:', data);
+        if (data.msg || data.message) {
+            if (actionMsg) {
+                actionMsg.style.color = '#667eea';
+                actionMsg.textContent = 'ĐÃ£ xóa bÃ i';
+                setTimeout(() => actionMsg.style.display = 'none', 2000);
+            }
+            const row = buttonElement.closest('tr');
+            if (row) {
+                row.style.transition = 'opacity 0.3s';
+                row.style.opacity = '0';
+                setTimeout(() => {
+                    row.remove();
+                    if (typeof window.buildPlaylist === 'function') {
+                        window.buildPlaylist();
+                    }
+                }, 300);
+            }
+        } else if (data.error) {
+            if (actionMsg) {
+                actionMsg.style.color = '#e22134';
+                actionMsg.textContent = data.error;
+                setTimeout(() => actionMsg.style.display = 'none', 3000);
+            }
+        }
+    })
+    .catch(err => {
+        console.error('[Remove] Error:', err);
+        if (actionMsg) {
+            actionMsg.style.color = '#e22134';
+            actionMsg.textContent = 'Lỗi khi xóa';
+            setTimeout(() => actionMsg.style.display = 'none', 3000);
+        }
+    });
+};
+
+console.log('[PlaylistPage] removeSongFromPlaylist function defined');
+
+// Setup remove button handler with higher priority
+function setupRemoveButtonHandler() {
+    console.log('[Remove] Setting up handler...');
+    
+    const playlistId = {{ playlist.id if playlist else 'null' }};
+    console.log('[Remove] Playlist ID:', playlistId);
+    
+    const tbody = document.getElementById('song-list-body');
+    if (!tbody) {
+        console.error('[Remove] song-list-body not found!');
+        return;
+    }
+    
+    console.log('[Remove] Found tbody, adding listener');
+    
+    // Add new delegated listener
+    tbody.addEventListener('click', function(e) {
+        const removeBtn = e.target.closest('.remove-song-btn');
+        if (!removeBtn) return;
+        
+        console.log('[Remove] Button clicked!');
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const songId = removeBtn.getAttribute('data-id');
+        console.log('[Remove] Song ID:', songId, 'Playlist ID:', playlistId);
+        
+        if (!songId || !playlistId) {
+            alert('Lỗi: Không tìm thấy thông tin bÃ i hát');
+            return;
+        }
+        
+        if (!confirm('Xóa bÃ i nÃ y khỏi playlist?')) return;
+        
+        const token = localStorage.getItem('access_token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        
+        const actionMsg = document.getElementById('playlist-action-message');
+        if (actionMsg) {
+            actionMsg.style.color = 'gray';
+            actionMsg.textContent = 'Đang xóa...';
+            actionMsg.style.display = 'block';
+        }
+        
+        console.log('[Remove] Calling API...');
+        
+        fetch(`/api/playlists/${playlistId}/remove_song`, {
+            method: 'POST',
+            headers: headers,
+            credentials: 'include',
+            body: JSON.stringify({ song_id: parseInt(songId) })
+        })
+        .then(r => {
+            console.log('[Remove] Response status:', r.status);
+            return r.json();
+        })
+        .then(data => {
+            console.log('[Remove] Response:', data);
+            if (data.msg || data.message) {
+                if (actionMsg) {
+                    actionMsg.style.color = '#667eea';
+                    actionMsg.textContent = 'ĐÃ£ xóa bÃ i';
+                    setTimeout(() => actionMsg.style.display = 'none', 2000);
+                }
+                const row = removeBtn.closest('tr');
+                if (row) {
+                    row.style.transition = 'opacity 0.3s';
+                    row.style.opacity = '0';
+                    setTimeout(() => {
+                        row.remove();
+                        if (typeof window.buildPlaylist === 'function') {
+                            window.buildPlaylist();
+                        }
+                    }, 300);
+                }
+            } else if (data.error) {
+                if (actionMsg) {
+                    actionMsg.style.color = '#e22134';
+                    actionMsg.textContent = data.error;
+                    setTimeout(() => actionMsg.style.display = 'none', 3000);
+                }
+            }
+        })
+        .catch(err => {
+            console.error('[Remove] Error:', err);
+            if (actionMsg) {
+                actionMsg.style.color = '#e22134';
+                actionMsg.textContent = 'Lỗi khi xóa';
+                setTimeout(() => actionMsg.style.display = 'none', 3000);
+            }
+        });
+    });
+    
+    console.log('[Remove] Handler setup complete');
+}
+
+// Wait for app.js to fully load before initializing playlist features
+function initPlaylistFeatures() {
+    console.log('[Playlist] Checking if app.js is ready...');
+    
+    // Check if critical functions exist
+    const ready = typeof window.attachSongRowEvents === 'function' &&
+                  typeof window.buildPlaylist === 'function' &&
+                  typeof window.playSelectedSong === 'function';
+    
+    if (!ready) {
+        console.log('[Playlist] App.js not ready, retrying in 200ms...');
+        setTimeout(initPlaylistFeatures, 200);
+        return;
+    }
+    
+    console.log('[Playlist] App.js ready, initializing playlist page...');
+    
+    try {
+        // 1. Attach song row click events
+        window.attachSongRowEvents();
+        console.log('[Playlist] âœ“ Song row events attached');
+        
+        // 2. Build playlist from current page for player
+        window.buildPlaylist();
+        console.log('[Playlist] âœ“ Playlist built for player');
+        
+        // 3. Load like status for all songs
+        if (typeof loadLikeStatus === 'function') {
+            document.querySelectorAll('.song-row').forEach(row => {
+                const songId = row.dataset.songId;
+                if (songId) {
+                    loadLikeStatus(songId, row);
+                }
+            });
+            console.log('[Playlist] âœ“ Like status loading started');
+        }
+        
+        // 4. Setup remove button handler (override playlist.js)
+        setupRemoveButtonHandler();
+        console.log('[Playlist] âœ“ Remove button handler setup');
+        
+        // 5. Setup public/private toggle
+        setupPublicToggle();
+        console.log('[Playlist] âœ“ Public toggle setup');
+        
+        // 6. Re-initialize page systems
+        if (typeof window.initializePage === 'function') {
+            window.initializePage();
+            console.log('[Playlist] âœ“ Page initialized');
+        }
+        
+        console.log('[Playlist] âœ“âœ“âœ“ All features initialized successfully');
+    } catch(e) {
+        console.error('[Playlist] Error during initialization:', e);
+    }
+}
+
+// Old setupPublicToggle for hover effects only
+function setupPublicToggle() {
+    console.log('[PublicToggle] Setup hover effects');
+    const btn = document.getElementById('public-toggle-btn');
+    
+    if (btn) {
+        // Add hover effect
+        btn.addEventListener('mouseenter', function() {
+            const isPublic = this.getAttribute('data-is-public') === 'true';
+            if (!isPublic) {
+                this.style.borderColor = '#b3b3b3';
+            } else {
+                this.style.transform = 'scale(1.04)';
+            }
+        });
+        
+        btn.addEventListener('mouseleave', function() {
+            const isPublic = this.getAttribute('data-is-public') === 'true';
+            if (!isPublic) {
+                this.style.borderColor = '#727272';
+            } else {
+                this.style.transform = 'scale(1)';
+            }
+        });
+        console.log('[PublicToggle] Hover effects added');
+    }
+}
+
+// Remove old toggle switch CSS
+const toggleStyle = document.createElement('style');
+toggleStyle.textContent = `
+.public-toggle-btn:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.public-toggle-btn:active {
+    transform: scale(0.96) !important;
+}
+`;
+document.head.appendChild(toggleStyle);
+
+// Start initialization after a small delay
+setTimeout(initPlaylistFeatures, 100);
+
+    // Expose whether the client may manage this playlist.
+    // Only inject current user / owner id when server explicitly allowed management (can_manage).
+    window.CAN_MANAGE_PLAYLIST = {{ 'true' if can_manage else 'false' }};
+    {% if can_manage and current_user %}
+    window.CURRENT_USER = {
+        id: {{ current_user.id }},
+        role: {{ ('"' + current_user.role + '"') }}
+    };
+    window.PLAYLIST_OWNER_ID = {{ playlist.user_id if playlist else 'null' }};
+    {% else %}
+    window.CURRENT_USER = null;
+    window.PLAYLIST_OWNER_ID = null;
+    {% endif %}
+</script>
+<script src="/static/js/playlist.js"></script>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Thêm Thể Loại</h2>
+<form method="POST" enctype="multipart/form-data">
+    <label>Tên thể loại:</label>
+    <input type="text" name="name" required><br>
+    <label>Màu (class CSS):</label>
+    <input type="text" name="color" required><br>
+    <label>Ảnh thể loại:</label>
+    <input type="file" name="image" required><br>
+    <button type="submit">Thêm</button>
+</form>
+{% endblock %}

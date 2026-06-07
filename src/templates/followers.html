@@ -1,0 +1,84 @@
+{% extends "main.html" %}
+
+{% block title %}Người theo dõi{% endblock %}
+
+{% block content %}
+<div style="padding:24px;max-width:1200px;margin:0 auto;">
+    <h1 style="color:#fff;font-size:32px;font-weight:900;margin-bottom:24px;">Người theo dõi</h1>
+    
+    <div id="followers-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;">
+        <!-- User cards will be loaded here -->
+    </div>
+    
+    <div id="empty-state" style="display:none;text-align:center;padding:60px 20px;color:#b3b3b3;">
+        <div style="font-size:48px;margin-bottom:16px;">👥</div>
+        <h2 style="color:#fff;font-size:24px;margin-bottom:8px;">Chưa có người theo dõi</h2>
+        <p>Chia sẻ hồ sơ của bạn để mọi người theo dõi!</p>
+    </div>
+</div>
+
+<script>
+function headers() {
+    const h = {'Content-Type': 'application/json'};
+    const tokenLocal = localStorage.getItem('access_token');
+    const tokenCookie = document.cookie.split('; ').find(r => r.startsWith('access_token='));
+    const token = tokenLocal || (tokenCookie ? tokenCookie.split('=')[1] : null);
+    if (token) h['Authorization'] = 'Bearer ' + token;
+    return h;
+}
+
+async function loadFollowers() {
+    try {
+        // Get current user ID
+        const meResponse = await fetch('/auth/me', {
+            credentials: 'include',
+            headers: headers()
+        });
+        
+        if (!meResponse.ok) {
+            window.location.href = '/auth/login-page';
+            return;
+        }
+        
+        const currentUser = await meResponse.json();
+        
+        // Get list of followers
+        const response = await fetch(`/api/users/${currentUser.id}/followers`, {
+            credentials: 'include',
+            headers: headers()
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load followers');
+        }
+        
+        const users = await response.json();
+        const container = document.getElementById('followers-list');
+        const emptyState = document.getElementById('empty-state');
+        
+        if (!users || users.length === 0) {
+            container.style.display = 'none';
+            emptyState.style.display = 'block';
+            return;
+        }
+        
+        container.innerHTML = users.map(user => {
+            const avatarPath = user.avatar ? (user.avatar.startsWith('/static/') ? user.avatar : '/static/' + user.avatar) : '/static/images/default.jpg';
+            return `
+            <div onclick="window.location.href='/user/${user.id}'" style="background:#181818;border-radius:12px;padding:16px;cursor:pointer;transition:all 0.3s ease;text-align:center;" onmouseover="this.style.background='#282828';this.style.transform='translateY(-4px)'" onmouseout="this.style.background='#181818';this.style.transform='translateY(0)'">
+                <img src="${avatarPath}" alt="${user.username}" style="width:120px;height:120px;border-radius:50%;object-fit:cover;margin-bottom:12px;">
+                <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:4px;">${user.username}</h3>
+                <p style="color:#b3b3b3;font-size:14px;">Người dùng</p>
+            </div>
+        `}).join('');
+        
+    } catch (error) {
+        console.error('Error loading followers:', error);
+        document.getElementById('empty-state').style.display = 'block';
+        document.getElementById('followers-list').style.display = 'none';
+    }
+}
+
+loadFollowers();
+</script>
+{% endblock %}

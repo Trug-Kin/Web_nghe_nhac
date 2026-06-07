@@ -1,0 +1,384 @@
+{% extends "base.html" %}
+{% block title %}{{ user.username }} - Hồ sơ cá nhân{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(180deg, rgba(102, 126, 234, 0.3) 0%, rgba(26, 22, 37, 1) 300px);min-height:100vh;padding:80px 0 32px 0;">
+    <!-- Profile Header -->
+    <div style="max-width:1200px;margin:0 auto;padding:0 32px;">
+        <div style="display:flex;align-items:flex-end;gap:24px;margin-bottom:32px;flex-wrap:wrap;">
+            <div class="avatar-wrapper" style="position:relative;">
+                <img id="profile-avatar-img" src="{{ url_for('static', filename=user.avatar if user.avatar else 'images/default.jpg') }}" alt="Avatar" style="width:200px;height:200px;border-radius:50%;object-fit:cover;box-shadow:0 4px 60px rgba(0,0,0,.5);">
+                <label for="avatar-upload" class="avatar-upload-label" style="position:absolute;bottom:10px;right:10px;background:#667eea;color:#fff;padding:10px;border-radius:50%;cursor:pointer;transition:all 0.3s;width:48px;height:48px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(102, 126, 234, 0.6);" onmouseover="this.style.background='#764ba2';this.style.transform='scale(1.1)'" onmouseout="this.style.background='#667eea';this.style.transform='scale(1)'">
+                    <i class="fas fa-camera" style="font-size:20px;"></i>
+                </label>
+                <input type="file" id="avatar-upload" accept="image/*" style="display:none;">
+            </div>
+            
+            <div style="flex:1;min-width:300px;">
+                <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#b3b3b3;">Hồ sơ</span>
+                <h1 id="profile-username-heading" style="font-size:clamp(32px, 6vw, 72px);font-weight:900;line-height:1.1;margin:8px 0 16px 0;">{{ user.username }}</h1>
+                <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+                    <p style="font-size:16px;color:#b3b3b3;margin:0;">
+                        <i class="fas fa-envelope" style="margin-right:8px;color:#667eea;"></i>{{ user.email }}
+                    </p>
+                    <p style="font-size:16px;color:#b3b3b3;margin:0;">
+                        <i class="fas fa-shield-alt" style="margin-right:8px;color:#667eea;"></i>
+                        {% if user.role == 'admin' %}Quản trị viên
+                        {% elif user.role == 'uploader' %}Người tải lên
+                        {% else %}Người dùng{% endif %}
+                    </p>
+                </div>
+                
+                <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:20px;">
+                    <button id="show-username-editor" style="padding:12px 32px;border-radius:500px;border:1px solid #fff;background:transparent;color:#fff;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.3s;" onmouseover="this.style.background='#fff';this.style.color='#000'" onmouseout="this.style.background='transparent';this.style.color='#fff'">
+                        <i class="fa fa-edit" style="margin-right:8px;"></i>Đổi tên
+                    </button>
+                    {% if user.role and user.role|lower == 'admin' %}
+                    <a href="/admin/users" style="padding:12px 32px;border-radius:500px;background:#667eea;color:#fff;font-weight:700;font-size:14px;text-decoration:none;display:inline-block;transition:all 0.3s;" onmouseover="this.style.transform='scale(1.04)';this.style.background='#764ba2'" onmouseout="this.style.transform='scale(1)';this.style.background='#667eea'">
+                        <i class="fas fa-users-cog" style="margin-right:8px;"></i>Quản lý người dùng
+                    </a>
+                    <a href="/admin/music-data" style="padding:12px 32px;border-radius:500px;background:#667eea;color:#fff;font-weight:700;font-size:14px;text-decoration:none;display:inline-block;transition:all 0.3s;" onmouseover="this.style.transform='scale(1.04)';this.style.background='#764ba2'" onmouseout="this.style.transform='scale(1)';this.style.background='#667eea'">
+                        <i class="fas fa-music" style="margin-right:8px;"></i>Quản lý nhạc
+                    </a>
+                    {% elif user.role and user.role|lower == 'uploader' %}
+                    <a href="/admin/music-data" style="padding:12px 32px;border-radius:500px;background:#667eea;color:#fff;font-weight:700;font-size:14px;text-decoration:none;display:inline-block;transition:all 0.3s;" onmouseover="this.style.transform='scale(1.04)';this.style.background='#764ba2'" onmouseout="this.style.transform='scale(1)';this.style.background='#667eea'">
+                        <i class="fas fa-music" style="margin-right:8px;"></i>Quản lý nhạc
+                    </a>
+                    {% endif %}
+                    <button id="logout-btn" style="padding:12px 32px;border-radius:500px;border:1px solid #f44336;background:transparent;color:#f44336;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.3s;" onmouseover="this.style.background='#f44336';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='#f44336'">
+                        <i class="fas fa-sign-out-alt" style="margin-right:8px;"></i>Đăng xuất
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inline Username Editor -->
+        <div id="username-editor-container" style="display:none;background:rgba(52, 41, 69, 0.95);backdrop-filter:blur(10px);border-radius:12px;padding:24px;margin-bottom:24px;box-shadow:0 2px 12px rgba(102, 126, 234, 0.3);border:1px solid rgba(102, 126, 234, 0.2);">
+            <h3 style="margin:0 0 16px 0;color:#667eea;">Đổi tên Đăng nhập</h3>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;">
+                <input type="text" id="inline-new-username" placeholder="Nhập username mới" maxlength="50" style="flex:1;min-width:250px;padding:12px 16px;border-radius:8px;border:1px solid rgba(102, 126, 234, 0.3);background:rgba(37, 29, 53, 0.8);color:#fff;font-size:14px;">
+                <button id="save-username-btn" disabled style="padding:12px 24px;border-radius:500px;border:none;background:#667eea;color:#fff;font-weight:700;cursor:pointer;transition:all 0.3s;" onmouseover="if(!this.disabled){this.style.transform='scale(1.04)';this.style.background='#764ba2'}" onmouseout="this.style.transform='scale(1)';this.style.background='#667eea'">
+                    <i class="fas fa-check" style="margin-right:6px;"></i>Lưu
+                </button>
+                <button id="cancel-username-btn" style="padding:12px 24px;border-radius:500px;border:1px solid #fff;background:transparent;color:#fff;font-weight:700;cursor:pointer;transition:all 0.3s;" onmouseover="this.style.background='#fff';this.style.color='#000'" onmouseout="this.style.background='transparent';this.style.color='#fff'">
+                    <i class="fas fa-times" style="margin-right:6px;"></i>Huỷ
+                </button>
+            </div>
+            <div id="username-status" style="margin-top:12px;font-size:14px;color:#aaa;min-height:20px;"></div>
+        </div>
+
+        <!-- Stats Section -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:16px;margin-bottom:32px;">
+            <div onclick="window.location.href='/playlists'" style="background:rgba(52, 41, 69, 0.6);backdrop-filter:blur(10px);border:1px solid rgba(102, 126, 234, 0.2);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all 0.3s ease;" onmouseover="this.style.background='rgba(102, 126, 234, 0.3)';this.style.transform='translateY(-4px)'" onmouseout="this.style.background='rgba(52, 41, 69, 0.6)';this.style.transform='translateY(0)'">
+                <div id="playlist-count" style="font-size:32px;font-weight:900;color:#667eea;">...</div>
+                <div style="font-size:14px;color:#b3b3b3;margin-top:4px;">Playlists</div>
+            </div>
+            <div onclick="window.location.href='/liked-songs'" style="background:rgba(52, 41, 69, 0.6);backdrop-filter:blur(10px);border:1px solid rgba(102, 126, 234, 0.2);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all 0.3s ease;" onmouseover="this.style.background='rgba(102, 126, 234, 0.3)';this.style.transform='translateY(-4px)'" onmouseout="this.style.background='rgba(52, 41, 69, 0.6)';this.style.transform='translateY(0)'">
+                <div id="liked-songs-count" style="font-size:32px;font-weight:900;color:#667eea;">...</div>
+                <div style="font-size:14px;color:#b3b3b3;margin-top:4px;">Bài hát yêu thích</div>
+            </div>
+            <div onclick="window.location.href='/artists'" style="background:rgba(52, 41, 69, 0.6);backdrop-filter:blur(10px);border:1px solid rgba(102, 126, 234, 0.2);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all 0.3s ease;" onmouseover="this.style.background='rgba(102, 126, 234, 0.3)';this.style.transform='translateY(-4px)'" onmouseout="this.style.background='rgba(52, 41, 69, 0.6)';this.style.transform='translateY(0)'">
+                <div id="followed-artists-count" style="font-size:32px;font-weight:900;color:#667eea;">...</div>
+                <div style="font-size:14px;color:#b3b3b3;margin-top:4px;">Nghệ Sĩ theo dõi</div>
+            </div>
+            <div onclick="window.location.href='/following'" style="background:rgba(52, 41, 69, 0.6);backdrop-filter:blur(10px);border:1px solid rgba(102, 126, 234, 0.2);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all 0.3s ease;" onmouseover="this.style.background='rgba(102, 126, 234, 0.3)';this.style.transform='translateY(-4px)'" onmouseout="this.style.background='rgba(52, 41, 69, 0.6)';this.style.transform='translateY(0)'">
+                <div id="following-count" style="font-size:32px;font-weight:900;color:#667eea;">...</div>
+                <div style="font-size:14px;color:#b3b3b3;margin-top:4px;">Đang theo dõi</div>
+            </div>
+            <div onclick="window.location.href='/followers'" style="background:rgba(52, 41, 69, 0.6);backdrop-filter:blur(10px);border:1px solid rgba(102, 126, 234, 0.2);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all 0.3s ease;" onmouseover="this.style.background='rgba(102, 126, 234, 0.3)';this.style.transform='translateY(-4px)'" onmouseout="this.style.background='rgba(52, 41, 69, 0.6)';this.style.transform='translateY(0)'">
+                <div id="followers-count" style="font-size:32px;font-weight:900;color:#667eea;">...</div>
+                <div style="font-size:14px;color:#b3b3b3;margin-top:4px;">Người theo dõi</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+function headers(){
+    const h={'Content-Type':'application/json'};
+    const tokenLocal = localStorage.getItem('access_token');
+    const tokenCookie = document.cookie.split('; ').find(r=>r.startsWith('access_token='));
+    const token = tokenLocal || (tokenCookie ? tokenCookie.split('=')[1] : null);
+    if(token) h['Authorization'] = 'Bearer ' + token;
+    return h;
+}
+
+// Avatar upload
+document.getElementById('avatar-upload').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+        alert('Vui lòng chỏn file ảnh!');
+        return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+        alert('Kích thưỏ›c ảnh tỏ‘i Đ‘a 5MB!');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const avatarImg = document.getElementById('profile-avatar-img');
+    const originalSrc = avatarImg.src;
+    
+    // Get token for Authorization header
+    const tokenLocal = localStorage.getItem('access_token');
+    const tokenCookie = document.cookie.split('; ').find(r=>r.startsWith('access_token='));
+    const token = tokenLocal || (tokenCookie ? tokenCookie.split('=')[1] : null);
+    
+    const uploadHeaders = {};
+    if (token) uploadHeaders['Authorization'] = 'Bearer ' + token;
+    
+    fetch('/auth/upload-avatar', {
+        method: 'POST',
+        headers: uploadHeaders,
+        credentials: 'include',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const avatarPath = data.avatar_url.startsWith('/static/') ? data.avatar_url : '/static/' + data.avatar_url;
+            avatarImg.src = avatarPath + '?t=' + Date.now();
+            const navAvatar = document.getElementById('profile-avatar');
+            if (navAvatar) navAvatar.src = avatarPath + '?t=' + Date.now();
+            alert('Cập nhật avatar thÃ nh công!');
+        } else {
+            alert(data.msg || 'Có lỗi xảy ra!');
+            avatarImg.src = originalSrc;
+        }
+    })
+    .catch(err => {
+        console.error('Upload error:', err);
+        alert('Không thể upload ảnh!');
+        avatarImg.src = originalSrc;
+    });
+});
+
+// Username editor
+const editBtn = document.getElementById('show-username-editor');
+const editorContainer = document.getElementById('username-editor-container');
+const usernameInput = document.getElementById('inline-new-username');
+const saveBtn = document.getElementById('save-username-btn');
+const cancelBtn = document.getElementById('cancel-username-btn');
+const status = document.getElementById('username-status');
+const usernameHeading = document.getElementById('profile-username-heading');
+let debounceTimer = null;
+
+editBtn?.addEventListener('click', () => {
+    editorContainer.style.display = 'block';
+    usernameInput.value = usernameHeading.textContent.trim();
+    usernameInput.focus();
+    validateUsername();
+});
+
+cancelBtn?.addEventListener('click', () => {
+    editorContainer.style.display = 'none';
+    usernameInput.value = '';
+    status.textContent = '';
+});
+
+function validateUsername() {
+    const val = usernameInput.value.trim();
+    saveBtn.disabled = true;
+    status.style.color = '#aaa';
+    
+    if (val.length < 3) {
+        status.textContent = 'Tỏ‘i thiỏƒu 3 kÃ½ tỏ±';
+        return;
+    }
+    if (/[^a-zA-Z0-9_\.]/.test(val)) {
+        status.textContent = 'Chỏ‰ dùng chỏ¯, sỏ‘, _ vÃ  .';
+        return;
+    }
+    
+    status.textContent = 'Đang kiỏƒm tra...';
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+        try {
+            const r = await fetch('/auth/check-username?username=' + encodeURIComponent(val));
+            const data = await r.json().catch(() => ({}));
+            if (data.available) {
+                status.style.color = '#667eea';
+                status.textContent = 'âœ“ Có thể dùng';
+                saveBtn.disabled = false;
+            } else {
+                status.style.color = '#f44336';
+                status.textContent = data.msg || 'ĐÃ£ tỏ“n tại';
+            }
+        } catch (e) {
+            status.style.color = '#f44336';
+            status.textContent = 'Lỗi kiỏƒm tra';
+        }
+    }, 400);
+}
+
+usernameInput?.addEventListener('input', validateUsername);
+
+saveBtn?.addEventListener('click', async () => {
+    if (saveBtn.disabled) return;
+    const val = usernameInput.value.trim();
+    status.style.color = '#aaa';
+    status.textContent = 'Đang lưu...';
+    
+    try {
+        const r = await fetch('/auth/update-username', {
+            method: 'PUT',
+            headers: headers(),
+            body: JSON.stringify({username: val}),
+            credentials: 'include'
+        });
+        const data = await r.json().catch(() => ({}));
+        
+        if (r.ok && data.success) {
+            status.style.color = '#667eea';
+            status.textContent = 'âœ“ ĐÃ£ cập nhật';
+            usernameHeading.textContent = data.new_username;
+            if (data.access_token) {
+                try {
+                    localStorage.setItem('access_token', data.access_token);
+                } catch (e) {}
+            }
+            setTimeout(() => {
+                editorContainer.style.display = 'none';
+            }, 800);
+        } else {
+            status.style.color = '#f44336';
+            status.textContent = data.msg || 'Lỗi lưu';
+        }
+    } catch (e) {
+        status.style.color = '#f44336';
+        status.textContent = 'Lỗi mạng';
+    }
+});
+
+// Logout button
+document.getElementById('logout-btn')?.addEventListener('click', function() {
+    if (confirm('Bạn có cháº¯c muỏ‘n Đ‘Đƒng xuất?')) {
+        localStorage.removeItem('access_token');
+        document.cookie.split(";").forEach(c => {
+            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+        window.location.href = '/auth/login-page';
+    }
+});
+
+// Load stats
+async function loadStats() {
+    console.log('Loading stats...');
+    
+    try {
+        // Load playlists count
+        console.log('Fetching playlists...');
+        const playlistsResponse = await fetch('/api/playlists', {
+            credentials: 'include',
+            headers: headers()
+        });
+        console.log('Playlists response:', playlistsResponse.status);
+        if (playlistsResponse.ok) {
+            const playlists = await playlistsResponse.json();
+            console.log('Playlists data:', playlists);
+            document.getElementById('playlist-count').textContent = playlists.length;
+        } else {
+            document.getElementById('playlist-count').textContent = '0';
+        }
+    } catch (error) {
+        console.error('Error loading playlists:', error);
+        document.getElementById('playlist-count').textContent = '0';
+    }
+    
+    try {
+        // Load liked songs count
+        console.log('Fetching liked songs...');
+        const likedResponse = await fetch('/api/user/liked-songs/count', {
+            credentials: 'include',
+            headers: headers()
+        });
+        console.log('Liked songs response:', likedResponse.status);
+        if (likedResponse.ok) {
+            const data = await likedResponse.json();
+            console.log('Liked songs data:', data);
+            document.getElementById('liked-songs-count').textContent = data.count || 0;
+        } else {
+            document.getElementById('liked-songs-count').textContent = '0';
+        }
+    } catch (error) {
+        console.error('Error loading liked songs:', error);
+        document.getElementById('liked-songs-count').textContent = '0';
+    }
+    
+    try {
+        // Load followed artists count
+        console.log('Fetching followed artists...');
+        const artistsResponse = await fetch('/api/user/followed-artists', {
+            credentials: 'include',
+            headers: headers()
+        });
+        console.log('Artists response:', artistsResponse.status);
+        if (artistsResponse.ok) {
+            const artists = await artistsResponse.json();
+            console.log('Artists data:', artists);
+            document.getElementById('followed-artists-count').textContent = artists.length;
+        } else {
+            document.getElementById('followed-artists-count').textContent = '0';
+        }
+    } catch (error) {
+        console.error('Error loading artists:', error);
+        document.getElementById('followed-artists-count').textContent = '0';
+    }
+    
+    try {
+        // Load current user's ID to fetch follow stats
+        console.log('Fetching current user...');
+        const currentUserResponse = await fetch('/auth/me', {
+            credentials: 'include',
+            headers: headers()
+        });
+        console.log('Current user response:', currentUserResponse.status);
+        if (currentUserResponse.ok) {
+            const currentUser = await currentUserResponse.json();
+            console.log('Current user data:', currentUser);
+            const userId = currentUser.id;
+            
+            // Load following and followers count
+            console.log('Fetching follow info for user:', userId);
+            const followInfoResponse = await fetch(`/api/users/${userId}/follow-info`, {
+                credentials: 'include',
+                headers: headers()
+            });
+            console.log('Follow info response:', followInfoResponse.status);
+            if (followInfoResponse.ok) {
+                const followInfo = await followInfoResponse.json();
+                console.log('Follow info data:', followInfo);
+                document.getElementById('following-count').textContent = followInfo.following_count || 0;
+                document.getElementById('followers-count').textContent = followInfo.follower_count || 0;
+            } else {
+                document.getElementById('following-count').textContent = '0';
+                document.getElementById('followers-count').textContent = '0';
+            }
+        } else {
+            document.getElementById('following-count').textContent = '0';
+            document.getElementById('followers-count').textContent = '0';
+        }
+    } catch (error) {
+        console.error('Error loading follow info:', error);
+        document.getElementById('following-count').textContent = '0';
+        document.getElementById('followers-count').textContent = '0';
+    }
+    
+    console.log('Stats loading complete!');
+}
+
+// Load stats on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadStats);
+} else {
+    // Document already loaded, call immediately
+    loadStats();
+}
+</script>
+{% endblock %}

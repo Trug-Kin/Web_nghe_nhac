@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Lịch sử nghe{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="page-header mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-history" style="color: #1db954;"></i>
+            Lịch sử nghe
+        </h1>
+        <p class="text-muted">{{ history|length }} lần nghe</p>
+    </div>
+
+    {% if history %}
+    <div class="songs-table-wrapper">
+        <table class="song-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Tiêu đề</th>
+                    <th>Nghệ sĩ</th>
+                    <th>Album</th>
+                    <th>Thời gian nghe</th>
+                </tr>
+            </thead>
+            <tbody id="song-list-body">
+                {% for item in history %}
+                <tr class="song-row" 
+                    data-song-id="{{ item.id }}" 
+                    data-mp3-path="{% if item.mp3_path.startswith('/static/') %}{{ item.mp3_path }}{% else %}/static/{{ item.mp3_path }}{% endif %}" 
+                    data-title="{{ item.title }}" 
+                    data-artist-name="{{ item.artist_name }}" 
+                    data-album-image="/static/images/default.jpg">
+                    <td>{{ loop.index }}</td>
+                    <td>
+                        <div class="song-info">
+                            <i class="fas fa-play-circle play-icon"></i>
+                            <a href="/song/{{ item.id }}" onclick="event.stopPropagation()" class="song-title-link" style="color:#fff;text-decoration:none;margin-left:8px;">{{ item.title }}</a>
+                        </div>
+                    </td>
+                    <td>
+                        {% if item.artist_id %}
+                        <a href="/artist/{{ item.artist_id }}" onclick="event.stopPropagation()" class="artist-link">
+                            {{ item.artist_name }}
+                        </a>
+                        {% else %}
+                        {{ item.artist_name }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.album_id %}
+                        <a href="/album/{{ item.album_id }}" onclick="event.stopPropagation()" class="album-link">
+                            {{ item.album_title }}
+                        </a>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.listened_at[:19].replace('T', ' ') if item.listened_at else '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-history" style="font-size: 4rem; color: #666; margin-bottom: 1rem;"></i>
+        <h3>Chưa có lịch sử nghe</h3>
+        <p class="text-muted">Hãy nghe nhạc để xem lịch sử của bạn!</p>
+        <a href="/" class="btn btn-primary mt-3">
+            <i class="fas fa-music"></i> Khám phá nhạc
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.page-header {
+    border-bottom: 2px solid #333;
+    padding-bottom: 1rem;
+}
+
+.page-title {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.songs-table-wrapper {
+    background: #1a1a1a;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.song-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.song-table th {
+    background: #282828;
+    color: #fff;
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #333;
+}
+
+.song-row {
+    border-bottom: 1px solid #2a2a2a;
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+}
+
+.song-row:hover {
+    background-color: #282828;
+}
+
+.song-row td {
+    padding: 1rem;
+    color: #b3b3b3;
+}
+
+.song-info {
+    display: flex;
+    align-items: center;
+}
+
+.play-icon {
+    color: #1db954;
+    font-size: 1.2rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.song-row:hover .play-icon {
+    opacity: 1;
+}
+
+.song-title-link:hover {
+    text-decoration: underline !important;
+}
+
+.artist-link,
+.album-link {
+    color: #b3b3b3;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.artist-link:hover,
+.album-link:hover {
+    color: #fff;
+    text-decoration: underline;
+}
+
+.like-button {
+    background: none;
+    border: none;
+    color: #b3b3b3;
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: all 0.2s;
+    padding: 0.5rem;
+}
+
+.like-button:hover {
+    color: #ff4081;
+    transform: scale(1.1);
+}
+
+.like-button.liked {
+    color: #ff4081;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.empty-state h3 {
+    color: #fff;
+    margin-bottom: 0.5rem;
+}
+
+.btn-primary {
+    background: #1db954;
+    color: #fff;
+    padding: 0.75rem 2rem;
+    border-radius: 24px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s;
+}
+
+.btn-primary:hover {
+    background: #1aa34a;
+    transform: scale(1.05);
+}
+
+.text-muted {
+    color: #888;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const songRows = document.querySelectorAll('.song-row');
+    
+    songRows.forEach(row => {
+        row.addEventListener('click', function(e) {
+            if (e.target.closest('.like-button') || e.target.closest('a')) {
+                return;
+            }
+            
+            const mp3Path = this.getAttribute('data-mp3-path');
+            const title = this.getAttribute('data-title');
+            const artistName = this.getAttribute('data-artist-name');
+            const albumImage = this.getAttribute('data-album-image');
+            const songId = this.getAttribute('data-song-id');
+            
+            if (mp3Path && window.loadSong) {
+                window.loadSong(mp3Path, title, artistName, albumImage, songId);
+            }
+        });
+    });
+});
+
+function toggleLike(songId, button) {
+    fetch(`/api/songs/${songId}/like`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const icon = button.querySelector('i');
+            if (data.liked) {
+                button.classList.add('liked');
+                icon.classList.remove('far');
+                icon.classList.add('fas');
+            } else {
+                button.classList.remove('liked');
+                icon.classList.remove('fas');
+                icon.classList.add('far');
+            }
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+</script>
+{% endblock %}

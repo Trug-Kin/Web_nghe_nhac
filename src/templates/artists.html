@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Trang chủ - Melune{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="section-header">
+        <h2>Thể loại</h2>
+    </div>
+    <div class="categories grid-container" id="genres-container">
+        {% for genre in genres %}
+            <a href="/genre/{{ genre.id }}">
+                <div class="card {{ genre.color_class or 'default-color' }}">
+                    <div class="title">{{ genre.name }}</div>
+                    <img src="{{ url_for('static', filename=genre.image_path or 'images/default_genre.png') }}" alt="{{ genre.name }}">
+                </div>
+            </a>
+        {% else %}
+            <p>Chưa có thể loại nào.</p>
+        {% endfor %}
+    </div>
+
+    <div class="section-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <h2 style="margin:0;">Nghệ sĩ</h2>
+        <a href="/artists" style="color:#1db954;font-weight:600;text-decoration:none;font-size:15px;">Tất cả &rarr;</a>
+    </div>
+    <div class="artists horizontal-scroll" id="artists-container" style="display:flex; flex-direction:row; overflow-x:auto; gap:24px; padding-bottom:8px; scrollbar-width:auto; scrollbar-color:#888 #222; height:210px; align-items:flex-start; overflow-y:hidden; min-width:100vw;">
+        {% for artist in artists %}
+            <a href="/artist/{{ artist.id }}" style="flex:0 0 auto; text-decoration:none; color:inherit;">
+                <div class="artist-card" style="width:140px; background:#181818; border-radius:16px; padding:18px 10px 12px 10px; display:flex; flex-direction:column; align-items:center; box-shadow:0 2px 8px rgba(0,0,0,0.12);">
+    <style>
+    /* Hiện thanh cuộn ngang rõ ràng cho artists, loại bỏ grid */
+    #artists-container {
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: #888 #222;
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 24px;
+        height: 210px;
+        align-items: flex-start;
+        min-width: 100vw;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    #artists-container .artist-card {
+        flex: 0 0 auto;
+    }
+    #artists-container::-webkit-scrollbar {
+        height: 10px;
+        background: #222;
+    }
+    #artists-container::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 6px;
+    }
+    /* Luôn hiện thanh cuộn ngang */
+    #artists-container {
+        overflow-x: scroll !important;
+    }
+    </style>
+                    <img src="{{ url_for('static', filename=artist.image_path or 'images/default_artist.png') }}" alt="{{ artist.name }}" style="width:90px; height:90px; object-fit:cover; border-radius:50%; margin-bottom:12px;">
+                    <div class="artist-info" style="text-align:center;">
+                        <h3 style="font-size:17px; margin:0 0 4px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ artist.name }}</h3>
+                        <p style="font-size:13px; color:#aaa; margin:0;">Artist</p>
+                    </div>
+                </div>
+            </a>
+        {% else %}
+            <p>Chưa có nghệ sĩ nào.</p>
+        {% endfor %}
+    </div>
+    <section class="content-section">
+        <div class="section-header"><h2>Album Nổi Bật</h2></div>
+        <div class="grid-container horizontal-scroll">
+            {% for album in albums %}
+                <a href="/album/{{ album.id }}">
+                    <div class="album-card">
+                        <img src="{{ url_for('static', filename=album.cover_image_path or 'images/default_album.png') }}" alt="{{ album.title }}">
+                        <h3>{{ album.title }}</h3>
+                        <p>{{ album.artist.name }}</p>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

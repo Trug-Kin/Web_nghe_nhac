@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% set SITE_NAME = 'Melune' %}
+    <title>{% block title %}{{ SITE_NAME }}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+     <link rel="icon" href="{{ url_for('static', filename='images/meluna.jpg') }}" type="image/png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script>
+    // Global error handler to prevent JS from completely breaking
+    window.addEventListener('error', function(e) {
+        console.warn('[Global] Caught error:', e.message, e.filename, e.lineno);
+        // Don't prevent default - just log it
+    });
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/context_menu.css') }}">
+    {% block head_extra %}{% endblock %}
+    <style>
+        /* Smooth page fade (adjust duration as needed) */
+        body.fade-page { transition: opacity .38s ease; }
+        body.fade-page.is-fading-out { opacity:0; }
+        /* (Optional) enable initial fade-in by adding class preload on body then removing it.
+           Currently we skip to avoid blank screen flashes if JS error occurs. */
+    </style>
+</head>
+<body class="fade-page {{ body_class|default('') }}">
+    <nav class="nav">
+        <div class="home-page">
+            
+            <a href="{{ url_for('music.home') }}"  class="active">
+                <img src="{{ url_for('static', filename='images/main.jpg') }}" alt="Home">
+            </a>
+        </div>
+        <div class="rankicon-page">
+            <a href="{{ url_for('music.ranking_page') }}" style="display:flex;flex-direction:column;align-items:center;text-decoration:none;color:#fff;">
+                <i class="fas fa-chart-line" style="font-size:36px;margin-bottom:2px;"></i>
+                <span style="margin-top:4px;font-weight:600;">BXH</span>
+            </a>
+        </div>
+        <div class="search">
+            <input id="global-search-input" type="text" placeholder="Search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <div id="search-results" class="search-results-dropdown" style="display:none;"></div>
+        </div>
+        <div class="user-controls" style="visibility: hidden;">
+            <div id="logged-out-view" style="display: none;">
+                <a href="{{ url_for('auth.register_page') }}" class="signup-btn">Sign up</a>
+                <a href="{{ url_for('auth.login_page') }}" class="login-btn">Log in</a>
+            </div>
+            <div id="logged-in-view" style="display: none;">
+                <div class="dropdown">
+                    <button class="profile-btn" id="profileDropdownBtn" type="button">
+                        <img id="profile-avatar" src="{{ url_for('static', filename='images/default.jpg') }}" alt="Avatar">
+                        <span id="profile-username">Username</span>
+                        <i class="fa fa-caret-down" style="margin-left:8px;"></i>
+                    </button>
+                    <div class="dropdown-content" id="profileDropdownMenu">
+                        <a href="{{ url_for('auth.profile_page') }}">
+                            <i class="fas fa-user"></i> Hồ sơ
+                        </a>
+                        <hr style="margin: 0.5rem 0; border-color: #333;">
+                        <a href="#" id="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </nav>
+<script>
+// Dropdown menu chỉ hiện khi click vào avatar/profile
+document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('profileDropdownBtn');
+    const menu = document.getElementById('profileDropdownMenu');
+    if (!btn || !menu) return;
+    let isOpen = false;
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        menu.classList.toggle('show');
+        isOpen = menu.classList.contains('show');
+    });
+    // Đóng dropdown khi click ra ngoài
+    document.addEventListener('click', function(e) {
+        if (isOpen && !menu.contains(e.target) && e.target !== btn) {
+            menu.classList.remove('show');
+            isOpen = false;
+        }
+    });
+    // Đóng dropdown khi bấm Escape
+    document.addEventListener('keydown', function(e) {
+        if (isOpen && e.key === 'Escape') {
+            menu.classList.remove('show');
+            isOpen = false;
+        }
+    });
+});
+</script>
+
+    <!-- Sidebar Menu -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-content">
+            <!-- Main Navigation -->
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">MENU</h3>
+                <ul class="sidebar-menu">
+                    <li><a href="/"><i class="fas fa-home"></i> Trang chủ</a></li>
+                    <li><a href="{{ url_for('music.ranking_page') }}"><i class="fas fa-chart-line"></i> Bảng xếp hạng</a></li>
+                    <li><a href="{{ url_for('auth.profile_page') }}" class="auth-required"><i class="fas fa-user"></i> Hồ sơ</a></li>
+                    <li><a href="{{ url_for('music.liked_songs') }}" class="auth-required"><i class="fas fa-heart"></i> Bài hát yêu thích</a></li>
+                    <li><a href="{{ url_for('music.history_page') }}" class="auth-required"><i class="fas fa-history"></i> Lịch sử nghe</a></li>
+                </ul>
+            </div>
+
+            <!-- Followed Artists Section - Button to open floating menu -->
+            <div class="sidebar-section auth-required" id="followed-artists-section" style="display:none;">
+                <button class="followed-artists-toggle" id="followed-artists-toggle" style="width:100%;background:transparent;border:none;padding:12px 16px;text-align:left;cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:space-between;font-size:14px;transition:background 0.2s;">
+                    <span><i class="fas fa-users" style="margin-right:8px;"></i>Nghệ sĩ đã follow</span>
+                    <i class="fas fa-chevron-right" style="font-size:12px;"></i>
+                </button>
+            </div>
+
+            <!-- Trending Artists Section -->
+            <div class="sidebar-section" id="trending-artists-section">
+                <h3 class="sidebar-title">Nghệ sĩ đang nổi</h3>
+                <ul class="sidebar-menu" id="trending-artists-list">
+                    <li style="color:#888;font-size:13px;">Đang tải...</li>
+                </ul>
+            </div>
+
+            <!-- Playlist Section -->
+            <div class="sidebar-section auth-required">
+                <h3 class="sidebar-title">PLAYLIST</h3>
+                <ul class="sidebar-menu">
+                    <li><a href="#" id="create-playlist-btn"><i class="fas fa-plus"></i> Tạo Playlist Mới</a></li>
+                    <li><a href="{{ url_for('music.my_playlists_page') }}" id="my-playlists-link"><i class="fas fa-list"></i> Playlist của tôi</a></li>
+                </ul>
+            </div>
+
+            <!-- Admin Section -->
+            <div class="sidebar-section admin-only" id="admin-section" style="display: none;">
+                <h3 class="sidebar-title">QUẢN TRỊ</h3>
+                <ul class="sidebar-menu">
+                    <li><a href="/admin/users" id="admin-manage-users-link"><i class="fas fa-users-cog"></i> Quản lý người dùng</a></li>
+                    <li><a href="/admin/music-data" id="admin-manage-music-link" data-roles="admin,uploader"><i class="fas fa-music"></i> Quản lý dữ liệu âm nhạc</a></li>
+                    
+                </ul>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content with margin for sidebar -->
+    <ul style="display:none;">
+        <li><a href="#" id="create-playlist-btn-old"><i class="fas fa-plus"></i> Tạo Playlist Mới</a></li>
+        <li><a href="{{ url_for('music.my_playlists_page') }}" id="my-playlists-link-old"><i class="fas fa-list"></i> Playlist của tôi</a></li>
+    </ul>
+    <div id="createPlaylistModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Tạo Playlist Mới</h2>
+            <form id="playlistCreationForm">
+                <div class="form-group">
+                    <label for="newPlaylistName">Tên Playlist:</label>
+                    <input type="text" id="newPlaylistName" required maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label for="newPlaylistDescription">Mô tả (tùy chọn):</label>
+                    <textarea id="newPlaylistDescription" maxlength="500"></textarea>
+                </div>
+                <button type="submit" id="submitCreatePlaylistBtn">Tạo</button>
+                <p id="playlistCreationMessage" class="message"></p>
+            </form>
+        </div>
+    </div>
+    <main id="main-content">
+        {% block content %}{% endblock %}
+        <div class="sidebar-nav">
+            <hr style="border-color: #282828; margin: 20px 0;">
+        </div>
+    </main>
+    <!-- Music player UI (required by static/js/app.js) -->
+    <div class="music-player" id="music-player">
+        <audio id="audio-player" preload="metadata"></audio>
+
+                <div class="player-controls">
+                    <!-- Song thumbnail -->
+                    <div class="song-thumbnail">
+                        <img id="current-song-image" src="{{ url_for('static', filename='images/default.jpg') }}" alt="Album art">
+                    </div>
+
+                    <button id="prev-btn" class="player-btn" aria-label="Previous">
+                        <i class="fa fa-backward"></i>
+                    </button>
+
+                    <button id="play-pause-btn" class="player-btn" aria-label="Play/Pause">
+                        <i class="fa fa-play"></i>
+                    </button>
+
+                    <button id="next-btn" class="player-btn" aria-label="Next">
+                        <i class="fa fa-forward"></i>
+                    </button>
+
+                    <button id="shuffle-btn" class="player-btn" aria-label="Shuffle" title="Bật/Tắt phát ngẫu nhiên">
+                        <i class="fa fa-shuffle"></i>
+                    </button>
+
+                    <button id="repeat-btn" class="player-btn" aria-label="Repeat" title="Lặp (off → all → one)">
+                        <i class="fa fa-repeat"></i>
+                    </button>
+
+                    <button id="queue-btn" class="player-btn" aria-label="Queue" title="Danh sách chờ">
+                        <i class="fa fa-list-ul"></i>
+                    </button>
+
+                    <div class="song-info">
+                        <span id="current-song-title">Không có bài hát</span>
+                        <span id="current-artist-name"></span>
+                    </div>
+
+                    <span id="current-time" class="time-label">0:00</span>
+
+                    <div class="progress-bar-container">
+                        <input type="range" id="progress-bar" min="0" max="100" value="0">
+                    </div>
+
+                    <span id="duration-time" class="time-label">0:00</span>
+
+                    <div class="volume-control">
+                        <button id="volume-btn" class="player-btn volume-btn" aria-label="Volume">
+                            <i class="fa fa-volume-up"></i>
+                        </button>
+                        <input type="range" id="volume-slider" min="0" max="100" value="70" title="Âm lượng">
+                    </div>
+                </div>
+    </div>
+
+    <!-- Context Menu & Toast Containers (must be before scripts) -->
+    <div id="song-context-menu" style="display:none;position:fixed;z-index:9999;min-width:240px;background:#1e1e1e;border:1px solid #333;border-radius:6px;box-shadow:0 4px 18px rgba(0,0,0,0.5);padding:6px 0;font-size:14px;color:#eee;">
+        <div style="padding:6px 12px;">
+            <input id="context-playlist-search" type="text" placeholder="Tìm playlist..." style="width:100%;padding:4px 8px;background:#2a2a2a;border:1px solid #444;border-radius:4px;color:#ddd;outline:none;font-size:13px;">
+        </div>
+        <div id="context-playlist-list" style="max-height:220px;overflow-y:auto;">
+            <!-- playlists will be injected here -->
+            <div style="padding:8px 14px;color:#777;font-size:12px;">Đang tải playlist...</div>
+        </div>
+        <div style="border-top:1px solid #333;margin-top:4px;padding-top:4px;">
+            <button id="context-create-playlist-btn" style="width:100%;background:none;border:none;text-align:left;padding:8px 14px;color:#0af;cursor:pointer;font-weight:500;">+ Tạo playlist mới với bài này</button>
+            <div id="context-create-form" style="display:none;padding:8px 14px;">
+                <input type="text" id="context-new-playlist-name" placeholder="Tên playlist" maxlength="100" style="width:100%;margin-bottom:6px;padding:4px 8px;background:#2a2a2a;border:1px solid #444;border-radius:4px;color:#eee;">
+                <textarea id="context-new-playlist-desc" placeholder="Mô tả (tuỳ chọn)" maxlength="300" style="width:100%;height:60px;resize:vertical;padding:4px 8px;background:#2a2a2a;border:1px solid #444;border-radius:4px;color:#eee;"></textarea>
+                <div style="display:flex;gap:6px;margin-top:6px;">
+                    <button id="context-save-playlist" style="flex:1;background:#0a84ff;border:none;padding:6px 8px;border-radius:4px;color:#fff;cursor:pointer;">Lưu</button>
+                    <button id="context-cancel-create" style="flex:1;background:#444;border:none;padding:6px 8px;border-radius:4px;color:#ccc;cursor:pointer;">Hủy</button>
+                </div>
+                <div id="context-create-msg" style="margin-top:6px;font-size:12px;min-height:14px;color:#ccc;"></div>
+            </div>
+        </div>
+    </div>
+    <div id="toast-container" style="position:fixed;bottom:20px;right:20px;z-index:10000;display:flex;flex-direction:column;gap:10px;pointer-events:none;"></div>
+
+    <!-- Followed Artists Floating Panel -->
+    <div id="followed-artists-panel" class="followed-artists-panel" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;">
+        <div class="followed-artists-panel-content" style="position:absolute;left:250px;top:50%;transform:translateY(-50%);width:320px;max-height:80vh;background:#181818;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.4);overflow:hidden;animation:slideInFromLeft 0.3s ease-out;">
+            <div class="panel-header" style="padding:20px;border-bottom:1px solid #282828;display:flex;align-items:center;justify-content:space-between;">
+                <h3 style="margin:0;font-size:18px;font-weight:600;color:#fff;"><i class="fas fa-users" style="margin-right:10px;color:#1db954;"></i>Nghệ sĩ đã follow</h3>
+                <button id="close-followed-artists-panel" style="background:transparent;border:none;color:#aaa;font-size:24px;cursor:pointer;padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all 0.2s;">&times;</button>
+            </div>
+            <div class="panel-body" style="padding:16px;overflow-y:auto;max-height:calc(80vh - 80px);">
+                <ul id="followed-artists-list" style="list-style:none;padding:0;margin:0;">
+                    {% if server_followed_artists is defined %}
+                        {% if server_followed_artists %}
+                            {% for a in server_followed_artists %}
+                                <li style="margin-bottom:8px;">
+                                    <a href="/artist/{{ a.id }}" style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:8px;text-decoration:none;color:#fff;transition:background 0.2s;">
+                                        <img src="{% if a.image_path %}{{ '/static/' + a.image_path if not a.image_path.startswith('/static/') else a.image_path }}{% else %}/static/images/default_artist.jpg{% endif %}" alt="{{ a.name }}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;">
+                                        <div style="flex:1;">
+                                            <div style="font-size:15px;font-weight:500;">{{ a.name }}</div>
+                                            <div style="font-size:12px;color:#aaa;">Nghệ sĩ</div>
+                                        </div>
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        {% else %}
+                            <li style="color:#888;font-size:14px;text-align:center;padding:40px 20px;">
+                                <i class="fas fa-user-slash" style="font-size:48px;margin-bottom:16px;opacity:0.3;"></i>
+                                <p>Chưa follow nghệ sĩ nào.</p>
+                            </li>
+                        {% endif %}
+                    {% else %}
+                        <li data-state="loading" style="color:#888;font-size:14px;text-align:center;padding:40px 20px;">
+                            <i class="fas fa-spinner fa-spin" style="font-size:32px;margin-bottom:16px;"></i>
+                            <p>Đang tải...</p>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Queue Modal (Danh sách chờ) -->
+    <div id="queue-modal" class="queue-modal" style="display:none;">
+        <div class="queue-modal-content">
+            <div class="queue-header">
+                <h3>Danh sách chờ</h3>
+                <button id="close-queue-btn" class="close-queue-btn">&times;</button>
+            </div>
+            <div class="queue-body">
+                <div class="queue-section" id="now-playing-section">
+                    <h4>Đang phát</h4>
+                    <div id="now-playing-track" class="queue-track-empty">
+                        <p>Chưa có bài hát nào</p>
+                    </div>
+                </div>
+                <div class="queue-section" id="next-in-queue-section">
+                    <h4>Tiếp theo</h4>
+                    <div id="next-tracks-list" class="queue-tracks-list">
+                        <p class="queue-empty-message">Không có bài hát tiếp theo</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/spa-router.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/login.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/playlist.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/register.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/loginbutton.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/player.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/context_menu.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/search.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/interactions.js') }}"></script>
+    {% block scripts_extra %}{% endblock %}
+
+    <script>
+    // Followed Artists Floating Panel Toggle
+    (function(){
+        const toggleBtn = document.getElementById('followed-artists-toggle');
+        const panel = document.getElementById('followed-artists-panel');
+        const closeBtn = document.getElementById('close-followed-artists-panel');
+        
+        if (!toggleBtn || !panel || !closeBtn) return;
+        
+        function openPanel() {
+            panel.style.display = 'block';
+            document.body.style.overflow = 'hidden'; // Prevent background scroll
+        }
+        
+        function closePanel() {
+            panel.style.display = 'none';
+            document.body.style.overflow = ''; // Restore scroll
+        }
+        
+        toggleBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            openPanel();
+        });
+        
+        closeBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            closePanel();
+        });
+        
+        // Close when clicking outside the panel content
+        panel.addEventListener('click', function(e) {
+            if (e.target === panel) {
+                closePanel();
+            }
+        });
+        
+        // Close on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && panel.style.display === 'block') {
+                closePanel();
+            }
+        });
+        
+        // Hover effect on toggle button
+        toggleBtn.addEventListener('mouseenter', function() {
+            toggleBtn.style.background = 'rgba(255,255,255,0.05)';
+        });
+        
+        toggleBtn.addEventListener('mouseleave', function() {
+            toggleBtn.style.background = 'transparent';
+        });
+    })();
+    </script>
+
+    <script>
+    // Basic JS bootstrap for context menu (detailed logic added later steps)
+    (function(){
+        const menu = document.getElementById('song-context-menu');
+        if(!menu){ console.debug('[ContextMenu] menu element missing'); return; }
+        let currentSongId = null;
+        function hideMenu(){
+            if(menu.style.display!=='none') console.debug('[ContextMenu] hide');
+            menu.style.display='none';
+            currentSongId=null;
+        }
+        document.addEventListener('click', (e)=>{
+            if(menu.style.display==='none') return;
+            if(!menu.contains(e.target)) hideMenu();
+        });
+        document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') hideMenu(); });
+        document.addEventListener('scroll', hideMenu, true);
+        window.__SongContextMenu = {
+            showFor(songId, x, y){
+                currentSongId = songId;
+                menu.style.left = x + 'px';
+                menu.style.top = y + 'px';
+                menu.style.display='block';
+                console.debug('[ContextMenu] show for song', songId);
+            },
+            hide: hideMenu,
+            getSongId: ()=> currentSongId
+        };
+        console.debug('[ContextMenu] bootstrap complete');
+    })();
+    </script>
+    <script>
+    // Smooth transition when navigating to the homepage (fade-out then redirect)
+    (function(){
+        function setupFadeNav(){
+            const body = document.body;
+            const duration = 380; // ms (keep in sync with CSS)
+            const homeUrls = ["/", "{{ url_for('music.home') }}"].filter(Boolean);
+            function isHomeLink(a){
+                const href = a.getAttribute('href');
+                return href && homeUrls.includes(href.trim());
+            }
+            document.querySelectorAll('a').forEach(a => {
+                if(!isHomeLink(a)) return;
+                a.addEventListener('click', function(e){
+                    if(window.location.pathname === '/' || window.location.href === this.href) return; // already home
+                    e.preventDefault();
+                    body.classList.add('is-fading-out');
+                    setTimeout(()=>{ window.location.href = this.href; }, duration - 20);
+                });
+            });
+        }
+        if(document.readyState === 'loading'){
+            document.addEventListener('DOMContentLoaded', setupFadeNav);
+        } else {
+            setupFadeNav();
+        }
+    })();
+    </script>
+</body>
+</html>
